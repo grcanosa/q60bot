@@ -54,6 +54,6 @@ object Q60Utils {
 
   }
 
-  lazy val questions: Seq[Question] = loadQuestions().toSeq
+  lazy val allQuestions: Seq[Question] = loadQuestions().toSeq
 
 }

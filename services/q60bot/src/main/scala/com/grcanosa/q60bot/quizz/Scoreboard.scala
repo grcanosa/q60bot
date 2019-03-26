@@ -11,13 +11,13 @@ object Scoreboard {
      users.map(u => u.chatId == chatId).exists(b => b)
   }
 
-  def insertUser(chatId:ChatId) = {
-    users = users :+ Q60User(chatId,0)
+  def insertUser(chatId:ChatId, firstName: Option[String], lastName: Option[String]) = {
+    users = users :+ Q60User(chatId,0,firstName, lastName)
   }
 
-  def insertUserIfNotExists(chatId:ChatId) = {
+  def insertUserIfNotExists(chatId:ChatId,firstName: Option[String], lastName: Option[String]) = {
     val exists = exitsUser(chatId)
-    if(! exists) insertUser(chatId)
+    if(! exists) insertUser(chatId,firstName, lastName)
     ! exists
   }
 

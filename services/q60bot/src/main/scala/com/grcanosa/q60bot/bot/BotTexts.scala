@@ -12,4 +12,6 @@ object BotTexts {
 
   val unkownCmdText = ""
 
+  val quizzNotStartedYet = ""
+
 }
