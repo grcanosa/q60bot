@@ -9,4 +9,7 @@ import com.grcanosa.q60bot.utils.Q60Utils._
     println("QUESTION")
     println(q.toString)
   }
+
+  println(s"Token: $botToken")
+  println(s"RootId: $rootId")
 }

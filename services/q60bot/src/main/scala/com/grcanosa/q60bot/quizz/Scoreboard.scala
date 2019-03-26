@@ -20,4 +20,8 @@ object Scoreboard {
     if(! exists) insertUser(chatId)
     ! exists
   }
+
+  def getResultsString(): String = {
+    ""
+  }
 }

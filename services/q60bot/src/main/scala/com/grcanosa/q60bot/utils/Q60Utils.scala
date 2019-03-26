@@ -2,6 +2,7 @@ package com.grcanosa.q60bot.utils
 
 import scala.io.{BufferedSource, Source}
 import com.grcanosa.q60bot.model.{Opcion, Question}
+import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
 
 import scala.util.Try
@@ -11,6 +12,13 @@ object Q60Utils {
 
   val mylog  = LoggerFactory.getLogger("q60logger")
 
+  lazy val config: Config = {
+    ConfigFactory.load("application.conf")
+  }
+
+  lazy val botToken = config.getString("bot.token")
+
+  lazy val rootId = config.getLong("bot.rootId")
 
   def loadQuestions() = {
     val bufferedSource: BufferedSource = scala.io.Source.fromFile("src/main/resources/preguntas.csv")
