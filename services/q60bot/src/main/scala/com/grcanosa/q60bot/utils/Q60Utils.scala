@@ -29,21 +29,21 @@ object Q60Utils {
         spli.foreach(mylog.info)
         if(spli.size > 2){
           Try {
-            mylog.info("inside try")
+            //mylog.info("inside try")
             val question = spli(0)
-            mylog.info(s"question $question")
+            //mylog.info(s"question $question")
             val points = spli(1).toInt
-            mylog.info(s"points ${points.toString}")
+            //mylog.info(s"points ${points.toString}")
             val opciones: Array[Opcion] =
               for (respuesta <- spli.drop(2)) yield {
-                mylog.info(s"Respuesta: $respuesta")
+                //mylog.info(s"Respuesta: $respuesta")
                 if(respuesta.startsWith("TRUE:")){
                   Opcion(respuesta.replace("TRUE:",""),true)
                 }else{
                   Opcion(respuesta,false)
                 }
               }
-            mylog.info("Returning question")
+            //mylog.info("Returning question")
             Some(Question(question,opciones.toSeq,points))
           }.getOrElse(None)
         }else{

@@ -7,12 +7,13 @@ import com.bot4s.telegram.clients.AkkaHttpClient
 import com.bot4s.telegram.methods.SendMessage
 import com.bot4s.telegram.models.Update
 import com.bot4s.telegram.models.Message
+import com.grcanosa.q60bot.quizz.{QuizzActor, Scoreboard}
 
 
 
 
 
-class Q60Bot(val token: String, val rootId: Long, quizzActor: ActorRef) extends TelegramBot
+class Q60Bot(val token: String) extends TelegramBot
 with ActorBroker
 with AkkaDefaults
 with Commands
@@ -22,8 +23,11 @@ import com.grcanosa.q60bot.utils.Q60Utils._
   import com.grcanosa.q60bot.quizz.QuizzActor._
 
 
+
   override val client: RequestHandler = new AkkaHttpClient(token)
   override val broker = Some(system.actorOf(Props(new Broker),name="brokerq60"))
+
+  val quizzActor = system.actorOf(Props(new QuizzActor(broker.get)), s"quizzActor")
 
   class Broker extends Actor {
 
@@ -32,33 +36,41 @@ import com.grcanosa.q60bot.utils.Q60Utils._
       m.text match {
         case Some("/start") => self ! SendMessage(m.chat.id,BotTexts.startText())
         case Some("/reglas") => self ! SendMessage(m.chat.id,BotTexts.reglasText)
+        case Some("/question") => handleRootMsg(m)
+        case Some("/results") => handleRootMsg(m)
+        case Some(txt) if txt startsWith "/broadcast" => handleRootMsg(m)
         case Some(_) => self ! SendMessage(m.chat.id,BotTexts.unkownCmdText)
       }
     }
 
     def handleRootMsg(m:Message) = {
-      m.text match {
-        case Some("/question") => quizzActor ! SendQuestion
-        case Some("/result") => quizzActor ! SendResults
-        case Some(txt) => txt match {
-          case txt if txt startsWith "/broadcast" => quizzActor ! SendBroadcast(txt.replaceAllLiterally("/broadcast",""))
+      if(m.chat.id == rootId){
+        m.text match {
+          case Some("/question") => quizzActor ! SendQuestion
+          case Some("/result") => quizzActor ! SendResults
+          case Some(txt) => txt match {
+            case txt if txt startsWith "/broadcast" => quizzActor ! SendBroadcast(txt.replaceAllLiterally("/broadcast",""))
+            case _ => mylog.info(s"Unkown root cmd: $txt")
+          }
+          case _ => mylog.info("Unknown root cmd")
         }
-
+      }
+      else{
+        self ! SendMessage(m.chat.id,BotTexts.rootCmdOnlyText)
       }
     }
 
     override def receive = {
       case u: Update => {
-        u.message.foreach( m =>
-          if(m.chat.id == rootId) {
-            handleRootMsg(m)
-          }
-          else{
+        u.message.foreach( m => {
+          Scoreboard.insertUserIfNotExists(m.chat.id,m.chat.firstName,m.chat.lastName)
+          mylog.info(s"Message from chatid: ${m.chat.id}")
             if(m.text.exists(_.startsWith("/"))){
               handleCommand(m)
             } else {
               quizzActor ! m
             }
+
           }
         )
       }

@@ -1,15 +1,15 @@
 package com.grcanosa.q60bot
 
+import com.grcanosa.q60bot.bot.Q60Bot
+
 object Q60App extends App {
 
-import com.grcanosa.q60bot.utils.Q60Utils._
+  import com.grcanosa.q60bot.utils.Q60Utils._
 
+  val bot = new Q60Bot(botToken)
 
-  questions.foreach { q =>
-    println("QUESTION")
-    println(q.toString)
-  }
-
-  println(s"Token: $botToken")
-  println(s"RootId: $rootId")
+  bot.run()
+  println("Bot is running, press ENTER to stop")
+  scala.io.StdIn.readLine()
+  bot.shutdown()
 }

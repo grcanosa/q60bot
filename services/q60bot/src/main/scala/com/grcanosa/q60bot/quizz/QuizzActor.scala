@@ -15,11 +15,6 @@ object QuizzActor {
 
 }
 
-object QuizzActorState extends Enumeration {
-  type QuizzActorState = Value
-  val STARTING, QUESTION, NO_QUESTION = QuizzActorState
-
-}
 
 class QuizzActor(val botActor: ActorRef) extends Actor{
 
@@ -29,17 +24,26 @@ class QuizzActor(val botActor: ActorRef) extends Actor{
 
   var state = STARTING
 
-  var questions: Seq[Question] = allQuestions
+  var currQuestionIndex = 1.toInt
 
-  def getNextQuestion() = {
-    val q = questions.head
-    questions = questions.tail
-    q
+  def getCurrentQuestion = allQuestions(currQuestionIndex-1)
+
+
+  def getCurrentQuestionMessage() = {
+    val q = getCurrentQuestion
+    val m =
+      s"""
+        |Pregunta $currQuestionIndex de ${allQuestions.size}:
+        |${q.question}
+        |A) ${q.opciones(0)}
+        |B) ${q.opciones(1)}
+        |C) ${q.opciones(2)}
+        |D) ${q.opciones(3)}
+      """.stripMargin
   }
 
 
   def handleStartingMessage(m:Message) = {
-    Scoreboard.insertUserIfNotExists(m.chat.id,m.chat.firstName,m.chat.lastName)
     botActor ! SendMessage(m.chat.id,BotTexts.quizzNotStartedYet)
   }
 

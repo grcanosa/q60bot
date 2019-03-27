@@ -30,6 +30,19 @@
 
     <dependencies>
 
+        <!-- https://mvnrepository.com/artifact/io.github.todokr/emojipolation -->
+        <dependency>
+            <groupId>io.github.todokr</groupId>
+            <artifactId>emojipolation_2.12</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.vdurmont</groupId>
+            <artifactId>emoji-java</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
