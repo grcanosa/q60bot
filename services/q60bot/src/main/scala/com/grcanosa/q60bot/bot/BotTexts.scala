@@ -7,7 +7,7 @@ import com.vdurmont.emoji.EmojiParser
 
 object BotTexts {
   import io.github.todokr.Emojipolation._
-  import com.grcanosa.q60bot.utils.Q60Utils._
+
 
   val fechacumple = LocalDateTime.of(2019,4,28,13,0,0)
 
