@@ -1,16 +1,20 @@
 package com.grcanosa.q60bot.bot
 
+import java.nio.file.Paths
+
 import akka.actor.{Actor, ActorRef, Props}
 import com.bot4s.telegram.api.declarative.{Action, Commands}
 import com.bot4s.telegram.api._
 import com.bot4s.telegram.clients.AkkaHttpClient
-import com.bot4s.telegram.methods.SendMessage
-import com.bot4s.telegram.models.{Message, Update, User}
+import com.bot4s.telegram.methods.{SendMessage, SendPhoto}
+import com.bot4s.telegram.models._
 import com.grcanosa.q60bot.quizz.{PlayerActor, QuizzActor, Scoreboard}
 import com.grcanosa.q60bot.bot.BotTexts
 import com.grcanosa.q60bot.bot.Q60Bot.SendToAllUsers
 import com.grcanosa.q60bot.model.Q60User
+import com.bot4s.telegram.api.declarative._
 
+import scala.concurrent.Future
 
 object Q60Bot {
 
@@ -19,16 +23,20 @@ object Q60Bot {
 }
 
 
+
+
 class Q60Bot(val token: String) extends TelegramBot
-  with ActorBroker
+//  with ActorBroker
   with AkkaDefaults
   with Commands
-  with Polling {
+  with Polling
+  with ChatActions {
 
   import com.grcanosa.q60bot.utils.Q60Utils._
 
   override val client: RequestHandler = new AkkaHttpClient(token)
-  override val broker = Some(system.actorOf(Props(new Broker), name = "brokerq60"))
+
+  val botActor = system.actorOf(Props(new BotActor), name = "botActor")
 
   val chatActors = collection.mutable.Map[Long, ActorRef]()
 
@@ -36,6 +44,20 @@ class Q60Bot(val token: String) extends TelegramBot
     f
   }
 
+  def replyWithPhoto(photo               : InputFile)
+//  ,
+//                     caption             : Option[String] = None,
+//                     disableNotification : Option[Boolean] = None,
+//                     replyToMessageId    : Option[Long] = None,
+//                     replyMarkup         : Option[ReplyMarkup] = None)
+                    (implicit msg: Message): Future[Message] = {
+    request(SendPhoto(msg.chat.id, photo))
+  }
+
+  // Usage
+//  onCommand('pic) { implicit msg =>
+//    replyWithPhoto(InputFile(Paths.get("cat.jpg")), "!!")
+//  }
 
   def getHandler(m: Message): ActorRef = atomic {
     mylog.info(s"Getting handler for ${m.chat.id}")
@@ -65,6 +87,14 @@ class Q60Bot(val token: String) extends TelegramBot
     }
   }
 
+  def isSenderAdmin(msg: Message): Boolean = {
+    val senderAdmin = msg.from.exists(_.id == rootId)
+    if(!senderAdmin){
+      reply(BotTexts.rootCmdOnlyText)
+    }
+    senderAdmin
+  }
+
 
   onCommand("/start") { implicit m =>
     mylog.info(s"START CMD ${m.chat.id}")
@@ -80,6 +110,11 @@ class Q60Bot(val token: String) extends TelegramBot
     }
   }
 
+  onCommand("/miguefoto") { implicit m => addedToUsers { handler =>
+      replyWithPhoto(InputFile(Paths.get(BotTexts.getPhotoPath())))
+    }
+  }
+
   onCommand("/broadcast") { implicit m =>
     addedToUsers { handler =>
       isAdmin { admin =>
@@ -91,15 +126,16 @@ class Q60Bot(val token: String) extends TelegramBot
     }
   }
 
-  class Broker extends Actor {
+  onMessage { implicit msg =>
+    addedToUsers { handler =>
+      handler ! msg
+    }
+  }
+
+  class BotActor extends Actor {
 
     override def receive = {
-      case u: Update => {
-        u.message.foreach { m =>
-          mylog.info(s"Getting handler update for ${m.chat.id}")
-          getHandler(m) ! m
-        }
-      }
+
       case SendToAllUsers(msg) => sendToAllUsers(msg)
     }
   }

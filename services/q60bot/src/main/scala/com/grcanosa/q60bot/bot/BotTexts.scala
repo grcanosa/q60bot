@@ -1,8 +1,12 @@
 package com.grcanosa.q60bot.bot
 
+import java.io.File
 import java.time.LocalDateTime
 import java.time.Duration
+
 import com.vdurmont.emoji.EmojiParser
+
+import scala.util.Random
 
 
 object BotTexts {
@@ -39,4 +43,10 @@ object BotTexts {
 
   val rootCmdOnlyText = "Comando solo permitido para el administrador..."
 
+
+  def getPhotoPath():String = {
+    var d = new File("photos")
+    var l = d.listFiles()
+    l(Random.nextInt(l.length)).getAbsolutePath
+  }
 }
