@@ -10,16 +10,21 @@ import com.bot4s.telegram.methods.{SendMessage, SendPhoto}
 import com.bot4s.telegram.models._
 import com.grcanosa.q60bot.quizz.{PlayerActor, QuizzActor, Scoreboard}
 import com.grcanosa.q60bot.bot.BotTexts
-import com.grcanosa.q60bot.bot.Q60Bot.SendToAllUsers
+import com.grcanosa.q60bot.bot.Q60Bot.{LoadBotUsers, SaveBotUsers, SendToAllUsers}
 import com.grcanosa.q60bot.model.Q60User
 import com.bot4s.telegram.api.declarative._
 
+import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.concurrent.Future
 
 object Q60Bot {
 
   case class SendToAllUsers(msg: String)
 
+  case object SaveBotUsers
+
+  case object LoadBotUsers
 }
 
 
@@ -40,30 +45,15 @@ class Q60Bot(val token: String) extends TelegramBot
 
   val chatActors = collection.mutable.Map[Long, ActorRef]()
 
+  botActor ! LoadBotUsers
+
   private def atomic[T](f: => T): T = chatActors.synchronized {
     f
   }
 
   def replyWithPhoto(photo               : InputFile)
-//  ,
-//                     caption             : Option[String] = None,
-//                     disableNotification : Option[Boolean] = None,
-//                     replyToMessageId    : Option[Long] = None,
-//                     replyMarkup         : Option[ReplyMarkup] = None)
                     (implicit msg: Message): Future[Message] = {
     request(SendPhoto(msg.chat.id, photo))
-  }
-
-  // Usage
-//  onCommand('pic) { implicit msg =>
-//    replyWithPhoto(InputFile(Paths.get("cat.jpg")), "!!")
-//  }
-
-  def getHandler(m: Message): ActorRef = atomic {
-    mylog.info(s"Getting handler for ${m.chat.id}")
-    chatActors.getOrElseUpdate(m.chat.id, {
-      system.actorOf(Props(classOf[PlayerActor], Q60User(m.chat.id, m.chat.firstName, m.chat.lastName)), name = s"player${m.chat.id}")
-    })
   }
 
   def isAdmin(ok: Action[User])(implicit msg: Message): Unit = {
@@ -88,6 +78,7 @@ class Q60Bot(val token: String) extends TelegramBot
   }
 
   def isSenderAdmin(msg: Message): Boolean = {
+    implicit val msg2 = msg
     val senderAdmin = msg.from.exists(_.id == rootId)
     if(!senderAdmin){
       reply(BotTexts.rootCmdOnlyText)
@@ -96,26 +87,29 @@ class Q60Bot(val token: String) extends TelegramBot
   }
 
 
-  onCommand("/start") { implicit m =>
-    mylog.info(s"START CMD ${m.chat.id}")
+  onCommand("/start") { implicit msg =>
+    mylog.info(s"START CMD ${msg.chat.id}")
     addedToUsers { handler =>
       mylog.info("Replying Start CMD")
       reply(BotTexts.startText())
     }
   }
 
-  onCommand("/reglas") { implicit m =>
+  onCommand("/reglas") { implicit msg =>
     addedToUsers { handler =>
       reply(BotTexts.reglasText)
     }
   }
 
-  onCommand("/miguefoto") { implicit m => addedToUsers { handler =>
-      replyWithPhoto(InputFile(Paths.get(BotTexts.getPhotoPath())))
+  onCommand("/miguefoto") { implicit msg => addedToUsers { handler =>
+      mylog.info("Replying foto")
+      val fotopath = getPhotoPath()
+      mylog.info(s"FotoPath $fotopath")
+      replyWithPhoto(InputFile(Paths.get(fotopath)))
     }
   }
 
-  onCommand("/broadcast") { implicit m =>
+  onCommand("/broadcast") { implicit msg =>
     addedToUsers { handler =>
       isAdmin { admin =>
         withArgs { args => {
@@ -126,10 +120,36 @@ class Q60Bot(val token: String) extends TelegramBot
     }
   }
 
-  onMessage { implicit msg =>
+  onMessage { implicit msg:Message =>
     addedToUsers { handler =>
+      mylog.info("Handler message")
       handler ! msg
     }
+  }
+
+
+  def getBotUsers(): Seq[Q60User] = {
+    chatActors.map(c => c._2.asInstanceOf[PlayerActor].user).toSeq
+  }
+
+  def loadBotUsers(botList: Seq[Q60User]) = {
+    botList.foreach(getHandler)
+  }
+
+  def getHandler(user:Q60User) = {
+   chatActors.getOrElseUpdate(user.chatId, {
+      system.actorOf(Props(classOf[PlayerActor], user), name = s"player${user.chatId}")
+    })
+  }
+
+  def getHandler(m: Message): ActorRef = atomic {
+    mylog.info(s"Getting handler for ${m.chat.id}")
+    chatActors.getOrElseUpdate(m.chat.id, {
+      system.scheduler.scheduleOnce(1 second){
+        botActor ! SaveBotUsers
+      }
+      system.actorOf(Props(classOf[PlayerActor], Q60User(m.chat.id, m.chat.firstName, m.chat.lastName)), name = s"player${m.chat.id}")
+    })
   }
 
   class BotActor extends Actor {
@@ -137,6 +157,10 @@ class Q60Bot(val token: String) extends TelegramBot
     override def receive = {
 
       case SendToAllUsers(msg) => sendToAllUsers(msg)
+
+      case SaveBotUsers => saveUsers(getBotUsers())
+
+      case LoadBotUsers => loadBotUsers(loadUsers())
     }
   }
 

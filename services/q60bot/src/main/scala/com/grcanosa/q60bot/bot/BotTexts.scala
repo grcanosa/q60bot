@@ -44,9 +44,5 @@ object BotTexts {
   val rootCmdOnlyText = "Comando solo permitido para el administrador..."
 
 
-  def getPhotoPath():String = {
-    var d = new File("photos")
-    var l = d.listFiles()
-    l(Random.nextInt(l.length)).getAbsolutePath
-  }
+
 }

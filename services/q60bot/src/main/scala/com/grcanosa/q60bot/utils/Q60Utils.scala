@@ -1,11 +1,13 @@
 package com.grcanosa.q60bot.utils
 
+import java.io.File
+
 import scala.io.{BufferedSource, Source}
-import com.grcanosa.q60bot.model.{Opcion, Question}
+import com.grcanosa.q60bot.model.{Opcion, Q60User, Question}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
 
-import scala.util.Try
+import scala.util.{Random, Try}
 
 
 object Q60Utils {
@@ -19,6 +21,8 @@ object Q60Utils {
   lazy val botToken = config.getString("bot.token")
 
   lazy val rootId = config.getLong("bot.rootId")
+
+  lazy val photoPath = config.getString("bot.photoPath")
 
   def loadQuestions() = {
     val bufferedSource: BufferedSource = scala.io.Source.fromFile("src/main/resources/preguntas.csv")
@@ -54,6 +58,25 @@ object Q60Utils {
 
   }
 
+  def loadUsers(): Seq[Q60User] = {
+
+  }
+
+  def saveUsers(users: Seq[Q60User]) = {
+    import java.io._
+    val fil = new PrintWriter(new File("users.csv"))
+    users.foreach(u => {
+      
+    })
+  }
+
   lazy val allQuestions: Seq[Question] = loadQuestions().toSeq
 
+
+  def getPhotoPath():String = {
+    var d = new File(photoPath)
+    var l = d.listFiles()
+    val ind = Random.nextInt(l.length)
+    l(ind).getAbsolutePath
+  }
 }

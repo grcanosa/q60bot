@@ -16,7 +16,7 @@ object PlayerActorState extends Enumeration  {
   val STARTING, QUESTION, NO_QUESTION = PlayerActorState
 }
 
-class PlayerActor(user: Q60User) extends Actor{
+class PlayerActor(val user: Q60User) extends Actor{
 
   import PlayerActorState._
   import com.grcanosa.q60bot.utils.Q60Utils._
