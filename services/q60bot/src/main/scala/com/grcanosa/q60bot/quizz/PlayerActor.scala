@@ -19,6 +19,7 @@ object PlayerActorState extends Enumeration  {
 class PlayerActor(user: Q60User) extends Actor{
 
   import PlayerActorState._
+  import com.grcanosa.q60bot.utils.Q60Utils._
 
   var state = STARTING
 
@@ -40,6 +41,7 @@ class PlayerActor(user: Q60User) extends Actor{
 
   override def receive()={
     case m:Message => {
+      mylog.info(s"Processing message ${m.text.get}")
       if(state == STARTING){
         handleStartingMessage(m)
       }
