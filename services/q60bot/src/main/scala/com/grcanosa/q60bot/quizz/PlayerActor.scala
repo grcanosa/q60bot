@@ -27,7 +27,7 @@ class PlayerActor(user: Q60User) extends Actor{
   var currQuestion: Option[Question] = None
 
   def handleStartingMessage(m:Message) = {
-    botActor ! SendMessage(m.chat.id,BotTexts.quizzNotStartedYet)
+   // botActor ! SendMessage(m.chat.id,BotTexts.quizzNotStartedYet)
   }
 
   def handleQuestionMessage(m:Message) = {

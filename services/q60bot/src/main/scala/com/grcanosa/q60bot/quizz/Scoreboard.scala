@@ -12,7 +12,7 @@ object Scoreboard {
   }
 
   def insertUser(chatId:ChatId, firstName: Option[String], lastName: Option[String]) = {
-    users = users :+ Q60User(chatId,0,firstName, lastName)
+    users = users :+ Q60User(chatId,firstName, lastName)
   }
 
   def insertUserIfNotExists(chatId:ChatId,firstName: Option[String], lastName: Option[String]) = {

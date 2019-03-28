@@ -15,6 +15,11 @@ object QuizzActor {
 
 }
 
+object QuizzActorState extends Enumeration {
+  type QuizzActorState = Value
+  val STARTING, QUESTION, NO_QUESTION = QuizzActorState
+
+}
 
 class QuizzActor(val botActor: ActorRef) extends Actor{
 
