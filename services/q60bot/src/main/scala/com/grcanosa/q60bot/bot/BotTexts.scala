@@ -4,6 +4,7 @@ import java.io.File
 import java.time.LocalDateTime
 import java.time.Duration
 
+import com.bot4s.telegram.models.{KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove}
 import com.vdurmont.emoji.EmojiParser
 
 import scala.util.Random
@@ -44,5 +45,11 @@ object BotTexts {
   val rootCmdOnlyText = "Comando solo permitido para el administrador..."
 
 
+  val answersKeyboard = ReplyKeyboardMarkup(Seq(
+              Seq(KeyboardButton("A"),KeyboardButton("B"))
+              ,Seq(KeyboardButton("C"),KeyboardButton("D")))
+          ,oneTimeKeyboard = Some(true))
+
+  val removeKeyboard = ReplyKeyboardRemove(true)
 
 }

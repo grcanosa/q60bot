@@ -42,7 +42,7 @@ class Q60Bot(val token: String) extends TelegramBot
   override val client: RequestHandler = new AkkaHttpClient(token)
 
   val botActor = system.actorOf(Props(new BotActor), name = "botActor")
-
+  val quizzActor = system.actorOf(Props(new QuizzActor(botActor)), name = "quizzActor")
   val chatActors = collection.mutable.Map[Long, ActorRef]()
 
   botActor ! LoadBotUsers
@@ -117,6 +117,14 @@ class Q60Bot(val token: String) extends TelegramBot
           }
         }
       }
+    }
+  }
+
+  onCommand("/question") { implicit msg =>
+    addedToUsers { handler =>
+      isAdmin { admin =>
+        quizzActor ! NewQuestion
+     }
     }
   }
 
