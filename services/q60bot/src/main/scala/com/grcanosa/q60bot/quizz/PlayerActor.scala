@@ -1,47 +1,76 @@
 package com.grcanosa.q60bot.quizz
 
-import akka.actor.Actor
+import akka.actor.{Actor, ActorRef}
+import com.bot4s.telegram.methods.SendMessage
 import com.bot4s.telegram.models.Message
+import com.grcanosa.q60bot.bot.BotTexts
+import com.grcanosa.q60bot.bot.Q60Bot.CountDownKeyboard
 import com.grcanosa.q60bot.model.{Q60User, Question}
-import com.grcanosa.q60bot.quizz.PlayerActor.{NewQuestion, TimesUp}
+import com.grcanosa.q60bot.quizz.PlayerActor.{NO_QUESTION, QUESTION, QuestionTimeIsOver, STARTING}
+import com.grcanosa.q60bot.quizz.QuizzActor.NewQuestionToUsers
+import scala.concurrent.duration._
 
-
-object PlayerActor{
-
-  case class NewQuestion(question:Question)
-  case object TimesUp
-}
-object PlayerActorState extends Enumeration  {
-  type PlayerActorState = Value
-  val STARTING, QUESTION, NO_QUESTION = PlayerActorState
+object PlayerActor {
+  case object QuestionTimeIsOver
+  val STARTING = 1
+  val QUESTION = 2
+  val NO_QUESTION = 3
 }
 
-class PlayerActor(val user: Q60User) extends Actor{
 
-  import PlayerActorState._
+
+
+
+class PlayerActor(val user: Q60User, val botActor: ActorRef) extends Actor{
+
+
   import com.grcanosa.q60bot.utils.Q60Utils._
+  import com.grcanosa.q60bot.bot.BotTexts._
+  import com.grcanosa.q60bot.bot.BotData._
 
-  var state = STARTING
+  implicit val context2 = context.dispatcher
+
+  var state: Int = STARTING
 
   var points = 0.toInt
 
   var currQuestion: Option[Question] = None
 
+  var currQuestionAnswered = false
+  var currQuestionOK = false
+
   def handleStartingMessage(m:Message) = {
-   // botActor ! SendMessage(m.chat.id,BotTexts.quizzNotStartedYet)
+    botActor ! SendMessage(m.chat.id,BotTexts.startText())
+  }
+
+  def handleAnswer(txt: String) = {
+    if(currQuestionAnswered){
+      botActor ! SendMessage(user.chatId,BotTexts.questionAlreadyAnswered,replyMarkup = Some(removeKeyboard))
+    }else{
+      botActor ! SendMessage(user.chatId,BotTexts.answerReceived,replyMarkup = Some(removeKeyboard))
+      currQuestionAnswered = true
+      if(txt == currQuestion.get.solution) {
+        currQuestionOK = true
+      }else {
+        currQuestionOK = false
+      }
+    }
   }
 
   def handleQuestionMessage(m:Message) = {
-
+    m.text.foreach {
+      case txt@("A" | "B" | "C" | "D") => handleAnswer(txt)
+      case _ => botActor ! SendMessage(m.chat.id, BotTexts.unkownQuizzAnswer)
+    }
   }
 
   def handleNoQuestionMessage(m:Message) = {
-
+    botActor ! SendMessage(m.chat.id,BotTexts.noQuestionRightNow,replyMarkup = Some(removeKeyboard))
   }
 
   override def receive()={
     case m:Message => {
-      mylog.info(s"Processing message ${m.text.get}")
+      mylog.info(s"Processing message ${m.text.get}, state: ${state}")
       if(state == STARTING){
         handleStartingMessage(m)
       }
@@ -49,15 +78,37 @@ class PlayerActor(val user: Q60User) extends Actor{
         handleQuestionMessage(m)
       }
       else if(state == NO_QUESTION){
-
+        handleNoQuestionMessage(m)
       }
     }
 
-    case NewQuestion(question) => {
-      currQuestion = Some(question)
+    case NewQuestionToUsers(q, m) => {
+      mylog.info(s"Sending question to user ${user.chatId}: ${user.firstName.getOrElse("")}, ${user.lastName.getOrElse("")}")
+      currQuestion = Some(q)
+      state = QUESTION
+      currQuestionAnswered = false
+      currQuestionOK = false
+      botActor ! SendMessage(user.chatId,m,replyMarkup = Some(answersKeyboard))
+      context.system.scheduler.scheduleOnce(questionAnswerDelay){
+        self ! QuestionTimeIsOver
+      }
+      context.system.scheduler.scheduleOnce(1 seconds) {
+        botActor ! CountDownKeyboard(user.chatId, None, questionAnswerDelay - (1 seconds))
+      }
     }
 
-    case TimesUp =>
+    case QuestionTimeIsOver => {
+      state = NO_QUESTION
+      if(! currQuestionAnswered){
+        botActor ! SendMessage(user.chatId,BotTexts.questionNotAnswered,replyMarkup = Some(removeKeyboard))
+      }else{
+        if(currQuestionOK){
+          botActor ! SendMessage(user.chatId,BotTexts.questionAnsweredOK,replyMarkup = Some(removeKeyboard))
+        }else{
+          botActor ! SendMessage(user.chatId,BotTexts.questionAnsweredKO,replyMarkup = Some(removeKeyboard))
+        }
+      }
+    }
   }
 
 }

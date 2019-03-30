@@ -1,86 +1,51 @@
 package com.grcanosa.q60bot.quizz
 
 import akka.actor.{Actor, ActorRef}
-import com.bot4s.telegram.methods.SendMessage
-import com.bot4s.telegram.models.{Message, Update}
-import com.grcanosa.q60bot.bot.BotTexts
-import com.grcanosa.q60bot.model.{Q60User, Question}
-import com.grcanosa.q60bot.quizz.QuizzActor.{SendBroadcast, SendQuestion, SendResults}
+import com.grcanosa.q60bot.model.Question
+import com.grcanosa.q60bot.quizz.QuizzActor.{NewQuestion, NewQuestionToUsers}
 
 object QuizzActor {
 
-  case object SendQuestion
-  case object SendResults
-  case class SendBroadcast(msg:String)
+  case object NewQuestion
+  case class NewQuestionToUsers(question: Question, msg: String)
 
 }
 
-object QuizzActorState extends Enumeration {
-  type QuizzActorState = Value
-  val STARTING, QUESTION, NO_QUESTION = QuizzActorState
-
-}
 
 class QuizzActor(val botActor: ActorRef) extends Actor{
 
-  import QuizzActorState._
-  import Scoreboard._
+  import com.grcanosa.q60bot.bot.BotData._
   import com.grcanosa.q60bot.utils.Q60Utils._
-
-  var state = STARTING
 
   var currQuestionIndex = 1.toInt
 
-  def getCurrentQuestion = allQuestions(currQuestionIndex-1)
+  def getCurrentQuestion() = allQuestions(currQuestionIndex-1)
 
 
-  def getCurrentQuestionMessage() = {
-    val q = getCurrentQuestion
-    val m =
-      s"""
-        |Pregunta $currQuestionIndex de ${allQuestions.size}:
+  def getCurrentQuestionMessage():String = {
+    val q = getCurrentQuestion()
+    val msg =  s"""
+        |Pregunta $currQuestionIndex de ${allQuestions.size} (${q.points} puntos):
         |${q.question}
-        |A) ${q.opciones(0)}
-        |B) ${q.opciones(1)}
-        |C) ${q.opciones(2)}
-        |D) ${q.opciones(3)}
+        |A) ${q.respA}
+        |B) ${q.respB}
+        |C) ${q.respC}
+        |D) ${q.respD}
       """.stripMargin
+    msg
   }
 
-
-  def handleStartingMessage(m:Message) = {
-    botActor ! SendMessage(m.chat.id,BotTexts.quizzNotStartedYet)
+  def nextQuestion(): Unit ={
+    currQuestionIndex += 1
   }
-
-  def handleQuestionMessage(m:Message) = {
-
-  }
-
-  def handleNoQuestionMessage(m:Message) = {
-
-  }
-
-  def sendMsgToAllUsers(msg:String) = {
-    Scoreboard.users foreach {
-      u => botActor ! SendMessage(u.chatId,msg)
-    }
-  }
-
 
   override def receive = {
-    case m: Message => {
-      if(state == STARTING){
-        handleStartingMessage(m)
-      }
-      else if(state == QUESTION){
-        handleQuestionMessage(m)
-      }
-      else if(state == NO_QUESTION){
-
-      }
+    case NewQuestion => {
+      mylog.info("Sending new question to users")
+      val q = getCurrentQuestion()
+      val m = getCurrentQuestionMessage()
+      botActor ! NewQuestionToUsers(q,m)
+      nextQuestion()
     }
-    case SendQuestion =>
-    case SendResults => sendMsgToAllUsers(Scoreboard.getResultsString())
-    case SendBroadcast(msg) => sendMsgToAllUsers(msg)
   }
 }

@@ -6,17 +6,21 @@ import akka.actor.{Actor, ActorRef, Props}
 import com.bot4s.telegram.api.declarative.{Action, Commands}
 import com.bot4s.telegram.api._
 import com.bot4s.telegram.clients.AkkaHttpClient
-import com.bot4s.telegram.methods.{SendMessage, SendPhoto}
+import com.bot4s.telegram.methods.{DeleteMessage, EditMessageReplyMarkup, SendMessage, SendPhoto}
 import com.bot4s.telegram.models._
-import com.grcanosa.q60bot.quizz.{PlayerActor, QuizzActor, Scoreboard}
-import com.grcanosa.q60bot.bot.BotTexts
-import com.grcanosa.q60bot.bot.Q60Bot.{LoadBotUsers, SaveBotUsers, SendToAllUsers}
+import com.grcanosa.q60bot.quizz.{PlayerActor, QuizzActor}
+import com.grcanosa.q60bot.bot.Q60Bot.{CountDownKeyboard, LoadBotUsers, SaveBotUsers, SendToAllUsers}
 import com.grcanosa.q60bot.model.Q60User
 import com.bot4s.telegram.api.declarative._
+import com.grcanosa.q60bot.bot.BotTexts.removeKeyboard
+import com.grcanosa.q60bot.quizz.QuizzActor.{NewQuestion, NewQuestionToUsers}
+import com.vdurmont.emoji.EmojiParser
+import io.github.todokr.Emojipolation._
 
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 object Q60Bot {
 
@@ -25,6 +29,8 @@ object Q60Bot {
   case object SaveBotUsers
 
   case object LoadBotUsers
+
+  case class CountDownKeyboard(chatId:Long,msgId:Option[Int],duration: FiniteDuration)
 }
 
 
@@ -38,12 +44,13 @@ class Q60Bot(val token: String) extends TelegramBot
   with ChatActions {
 
   import com.grcanosa.q60bot.utils.Q60Utils._
+  import com.grcanosa.q60bot.bot.BotData._
 
   override val client: RequestHandler = new AkkaHttpClient(token)
 
   val botActor = system.actorOf(Props(new BotActor), name = "botActor")
   val quizzActor = system.actorOf(Props(new QuizzActor(botActor)), name = "quizzActor")
-  val chatActors = collection.mutable.Map[Long, ActorRef]()
+  val chatActors = collection.mutable.Map[Long, (ActorRef,Q60User)]()
 
   botActor ! LoadBotUsers
 
@@ -53,7 +60,7 @@ class Q60Bot(val token: String) extends TelegramBot
 
   def replyWithPhoto(photo               : InputFile)
                     (implicit msg: Message): Future[Message] = {
-    request(SendPhoto(msg.chat.id, photo))
+    request(SendPhoto(msg.chat.id, photo,replyMarkup = Some(removeKeyboard)))
   }
 
   def isAdmin(ok: Action[User])(implicit msg: Message): Unit = {
@@ -62,12 +69,17 @@ class Q60Bot(val token: String) extends TelegramBot
         if (user.id == rootId)
           ok(user)
         else
-          reply(BotTexts.rootCmdOnlyText)
+          reply(BotTexts.rootCmdOnlyText,replyMarkup = Some(removeKeyboard))
     }
   }
 
+  def isNotCommand(action: Action[Any])(implicit msg:Message) = {
+    if(msg.text.exists(!_.startsWith("/")))
+      action()
+  }
+
   def addedToUsers(action: Action[ActorRef])(implicit msg: Message): Unit = {
-    action(getHandler(msg))
+    action(getActorRef(msg))
   }
 
 
@@ -86,18 +98,22 @@ class Q60Bot(val token: String) extends TelegramBot
     senderAdmin
   }
 
+  def isNotCommand(msg:Message): Boolean = {
+    msg.text.exists(!_.startsWith("/"))
+  }
+
 
   onCommand("/start") { implicit msg =>
     mylog.info(s"START CMD ${msg.chat.id}")
     addedToUsers { handler =>
       mylog.info("Replying Start CMD")
-      reply(BotTexts.startText())
+      reply(BotTexts.startText(),replyMarkup = Some(removeKeyboard))
     }
   }
 
   onCommand("/reglas") { implicit msg =>
     addedToUsers { handler =>
-      reply(BotTexts.reglasText)
+      reply(BotTexts.reglasText,replyMarkup = Some(removeKeyboard))
     }
   }
 
@@ -124,51 +140,114 @@ class Q60Bot(val token: String) extends TelegramBot
     addedToUsers { handler =>
       isAdmin { admin =>
         quizzActor ! NewQuestion
+
      }
     }
   }
 
+
+
   onMessage { implicit msg:Message =>
     addedToUsers { handler =>
-      mylog.info("Handler message")
-      handler ! msg
+      isNotCommand { _ =>
+        mylog.info("Handler message")
+        handler ! msg
+      }
+
     }
   }
 
 
   def getBotUsers(): Seq[Q60User] = {
-    chatActors.map(c => c._2.asInstanceOf[PlayerActor].user).toSeq
+    chatActors.map(_._2._2).toSeq
   }
 
   def loadBotUsers(botList: Seq[Q60User]) = {
-    botList.foreach(getHandler)
+    botList.foreach(getActorRef)
   }
 
-  def getHandler(user:Q60User) = {
+  def getActorRef(user:Q60User) = atomic {
    chatActors.getOrElseUpdate(user.chatId, {
-      system.actorOf(Props(classOf[PlayerActor], user), name = s"player${user.chatId}")
-    })
+      val actorref = system.actorOf(Props(classOf[PlayerActor], user), name = s"player${user.chatId}")
+     (actorref,user)
+    })._1
   }
 
-  def getHandler(m: Message): ActorRef = atomic {
+
+
+  def getActorRef(m: Message): ActorRef = atomic {
     mylog.info(s"Getting handler for ${m.chat.id}")
     chatActors.getOrElseUpdate(m.chat.id, {
       system.scheduler.scheduleOnce(1 second){
         botActor ! SaveBotUsers
       }
-      system.actorOf(Props(classOf[PlayerActor], Q60User(m.chat.id, m.chat.firstName, m.chat.lastName)), name = s"player${m.chat.id}")
-    })
+      val user = Q60User(m.chat.id, m.chat.firstName, m.chat.lastName)
+      val actorRef =system.actorOf(Props(classOf[PlayerActor],
+        user,botActor), name = s"player${m.chat.id}")
+      (actorRef,user)
+    })._1
   }
 
   class BotActor extends Actor {
 
     override def receive = {
 
+      case sm : SendMessage => request(sm)
+
       case SendToAllUsers(msg) => sendToAllUsers(msg)
 
       case SaveBotUsers => saveUsers(getBotUsers())
 
       case LoadBotUsers => loadBotUsers(loadUsers())
+
+      case newQuestion: NewQuestionToUsers => {
+        chatActors.foreach{
+          case (_,(actorRef,user)) => {
+            mylog.info(s"Sending a question to user ${user.chatId}")
+            actorRef ! newQuestion
+          }
+        }
+      }
+
+      case CountDownKeyboard(chatId,msgId,duration) => {
+        msgId match {
+          case None => {
+            val msgFuture = request(SendMessage(chatId,"Tiempo restante",replyMarkup = Some(getInlineKeyboard(duration))))
+            msgFuture.onComplete{
+              case Failure(exception) => mylog.error(s"Problem: ${exception.toString}",exception)
+              case Success(msg) => {
+                //mylog.info(s"Obtained MESSAGE WITH ID: ${msg.messageId}")
+                system.scheduler.scheduleOnce(1 seconds) {
+                  self ! CountDownKeyboard(chatId, Some(msg.messageId), duration - (1 seconds))
+                }
+              }
+            }
+          }
+          case _ => {
+            if(duration > (0 seconds)){
+              request(EditMessageReplyMarkup(Some(chatId),msgId,replyMarkup = Some(getInlineKeyboard(duration))))
+              system.scheduler.scheduleOnce(1 seconds){
+                self ! CountDownKeyboard(chatId,msgId, duration - (1 seconds))
+              }
+            }else{
+              request(DeleteMessage(chatId,msgId.get))
+            }
+
+          }
+        }
+      }
+    }
+
+    def getInlineKeyboard(duration:FiniteDuration) = {
+      val keytxt = if (duration.toSeconds > 5) {
+        duration.toSeconds.toString+" segundos"
+      }else{
+        val s = List.fill(duration.toSeconds.toInt)(":bomb:").mkString
+        EmojiParser.parseToUnicode(s)
+      }
+      //mylog.info(s"String is $keytxt")
+      val keyboard = InlineKeyboardButton(keytxt, callbackData = Some("A"))
+      InlineKeyboardMarkup(Seq(Seq(keyboard)))
     }
   }
 

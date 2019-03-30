@@ -4,9 +4,9 @@ import com.grcanosa.q60bot.bot.Q60Bot
 
 object Q60App extends App {
 
-  import com.grcanosa.q60bot.utils.Q60Utils._
+  import com.grcanosa.q60bot.bot.BotData._
 
-  val bot = new Q60Bot(botToken)
+  val bot = new Q60Bot(token)
 
   bot.run()
   println("Bot is running, press ENTER to stop")

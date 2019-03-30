@@ -44,6 +44,19 @@ object BotTexts {
 
   val rootCmdOnlyText = "Comando solo permitido para el administrador..."
 
+  val unkownQuizzAnswer = emoji"La respuesta tiene que ser A,B,C o D :sob:"
+
+  val questionAlreadyAnswered = emoji"Ya has contestado a la pregunta, tamprosill@... :disappointed: "
+
+  val questionNotAnswered = emoji"No has respondido la pregunta... Hay que se más rápido la próxima vez..."
+
+  val questionAnsweredOK = emoji"Enhorabuena!! Pregunta acertada"
+
+  val questionAnsweredKO = emoji"Ohhh... La próxima seguro que aciertas..."
+
+  val answerReceived = emoji"Respuesta recibida!"
+
+  val noQuestionRightNow = emoji"Espera un poco a qué te haga una pregunta... :wink:"
 
   val answersKeyboard = ReplyKeyboardMarkup(Seq(
               Seq(KeyboardButton("A"),KeyboardButton("B"))
