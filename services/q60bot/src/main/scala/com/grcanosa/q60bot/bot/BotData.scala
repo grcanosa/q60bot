@@ -12,6 +12,7 @@ object BotData {
   import com.grcanosa.q60bot.utils.Q60Utils._
 
   lazy val token = config.getString("bot.token")
+  lazy val devToken = config.getString("bot.devToken")
 
   lazy val rootId = config.getLong("bot.rootId")
 
@@ -50,9 +51,9 @@ object BotData {
 
   }
 
-  def loadUsers(): Seq[Q60User] = {
-    mylog.info("Loading Users")
-    val bufferedSource: BufferedSource = scala.io.Source.fromFile("users.csv")
+  def loadUsers(dev: Boolean = false): Seq[Q60User] = {
+    mylog.info(s"Loading Users from ${getFileName(dev)}")
+    val bufferedSource: BufferedSource = scala.io.Source.fromFile(getFileName(dev))
     bufferedSource.getLines().map{
       l => {
         val spli: Array[String] = l.split('|').map(_.trim)
@@ -66,10 +67,15 @@ object BotData {
     }.toSeq
   }
 
-  def saveUsers(users: Seq[Q60User]) = {
-    mylog.info("Saving users")
+  def getFileName(dev: Boolean = false) = {
+    if(dev)"users_dev.csv" else "users.csv"
+  }
+
+  def saveUsers(users: Seq[Q60User], dev: Boolean = false) = {
+    mylog.info(s"Saving users to ${getFileName(dev)}")
+
     import java.io._
-    val fil = new PrintWriter(new File("users.csv"))
+    val fil = new PrintWriter(new File(getFileName(dev)))
     users.foreach(u => {
       val s = u.chatId.toString+"|"+u.firstName.getOrElse("")+"|"+u.lastName.getOrElse("")+"|"+u.username.getOrElse("")
       mylog.info(s"Saving: $s")

@@ -18,6 +18,7 @@ import com.vdurmont.emoji.EmojiParser
 import io.github.todokr.Emojipolation._
 import akka.pattern.ask
 import akka.util.Timeout
+import com.grcanosa.q60bot.quizz.PlayerActor.QuestionTimeIsOver
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -41,7 +42,7 @@ object Q60Bot {
 
 
 
-class Q60Bot(val token: String) extends TelegramBot
+class Q60Bot(val token: String, val dev: Boolean) extends TelegramBot
 //  with ActorBroker
   with AkkaDefaults
   with Commands
@@ -190,7 +191,9 @@ class Q60Bot(val token: String) extends TelegramBot
     })._1
   }
 
-
+def getActorRef(chatId: Long) = {
+    chatActors.get(chatId)
+}
 
   def getActorRef(m: Message): ActorRef = atomic {
     mylog.info(s"Getting handler for ${m.chat.id}")
@@ -221,9 +224,9 @@ class Q60Bot(val token: String) extends TelegramBot
 
       case SendToAllUsers(msg) => sendToAllUsers(msg)
 
-      case SaveBotUsers => saveUsers(getBotUsers())
+      case SaveBotUsers => saveUsers(getBotUsers(),dev)
 
-      case LoadBotUsers => loadBotUsers(loadUsers())
+      case LoadBotUsers => loadBotUsers(loadUsers(dev))
 
       case ur: UserResult => updateResults(ur)
 
@@ -258,6 +261,7 @@ class Q60Bot(val token: String) extends TelegramBot
               }
             }else{
               request(DeleteMessage(chatId,msgId.get))
+              getActorRef(chatId).foreach{ case (ar,u) => ar ! QuestionTimeIsOver}
             }
 
           }
@@ -266,12 +270,14 @@ class Q60Bot(val token: String) extends TelegramBot
     }
 
     def getInlineKeyboard(duration:FiniteDuration) = {
-      val keytxt = if (duration.toSeconds > 5) {
-        duration.toSeconds.toString+" segundos"
-      }else{
-        val s = List.fill(duration.toSeconds.toInt)(":bomb:").mkString
-        EmojiParser.parseToUnicode(s)
-      }
+      val keytxt = duration.toSeconds.toInt match {
+          case 5 => BotTexts.t5sec
+          case 4 => BotTexts.t4sec
+          case 3 => BotTexts.t3sec
+          case 2 => BotTexts.t2sec
+          case 1 => BotTexts.t1sec
+          case n => n.toString+" segundos"
+        }
       //mylog.info(s"String is $keytxt")
       val keyboard = InlineKeyboardButton(keytxt, callbackData = Some("A"))
       InlineKeyboardMarkup(Seq(Seq(keyboard)))

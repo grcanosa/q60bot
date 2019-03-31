@@ -92,9 +92,9 @@ class PlayerActor(val user: Q60User, val botActor: ActorRef) extends Actor{
       currQuestionAnswered = false
       currQuestionOK = false
       botActor ! SendMessage(user.chatId,m,replyMarkup = Some(answersKeyboard))
-      context.system.scheduler.scheduleOnce(questionAnswerDelay){
-        self ! QuestionTimeIsOver
-      }
+//      context.system.scheduler.scheduleOnce(questionAnswerDelay){
+//        self ! QuestionTimeIsOver
+//      }
       context.system.scheduler.scheduleOnce(1 seconds) {
         botActor ! CountDownKeyboard(user.chatId, None, questionAnswerDelay - (1 seconds))
       }
