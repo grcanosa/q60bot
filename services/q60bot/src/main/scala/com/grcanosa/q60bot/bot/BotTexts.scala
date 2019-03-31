@@ -5,6 +5,7 @@ import java.time.LocalDateTime
 import java.time.Duration
 
 import com.bot4s.telegram.models.{KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove}
+import com.grcanosa.q60bot.bot.Q60Bot.UserResult
 import com.vdurmont.emoji.EmojiParser
 
 import scala.util.Random
@@ -64,5 +65,20 @@ object BotTexts {
           ,oneTimeKeyboard = Some(true))
 
   val removeKeyboard = ReplyKeyboardRemove(true)
+
+  def getPositionText(position:Int)= {
+
+    position match {
+      case 1 => EmojiParser.parseToUnicode(":first_place_medal:")
+      case 2 => EmojiParser.parseToUnicode(":second_place_medal:")
+      case 3 => EmojiParser.parseToUnicode(":third_place_medal:")
+      case n if n < 10 => position.toString+" "
+      case _ => position.toString
+    }
+  }
+
+  def getResultsText(position: Int, userR: UserResult) = {
+    s"${getPositionText(position)}- ${userR.result.toString} puntos - ${userR.user.firstName.getOrElse("")} ${userR.user.lastName.getOrElse("")}"
+  }
 
 }

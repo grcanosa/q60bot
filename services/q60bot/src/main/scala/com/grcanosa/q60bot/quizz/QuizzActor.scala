@@ -1,7 +1,7 @@
 package com.grcanosa.q60bot.quizz
 
 import akka.actor.{Actor, ActorRef}
-import com.grcanosa.q60bot.model.Question
+import com.grcanosa.q60bot.model.{Q60User, Question}
 import com.grcanosa.q60bot.quizz.QuizzActor.{NewQuestion, NewQuestionToUsers}
 
 object QuizzActor {
@@ -47,5 +47,7 @@ class QuizzActor(val botActor: ActorRef) extends Actor{
       botActor ! NewQuestionToUsers(q,m)
       nextQuestion()
     }
+
+
   }
 }

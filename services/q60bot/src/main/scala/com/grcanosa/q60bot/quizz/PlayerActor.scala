@@ -4,10 +4,11 @@ import akka.actor.{Actor, ActorRef}
 import com.bot4s.telegram.methods.SendMessage
 import com.bot4s.telegram.models.Message
 import com.grcanosa.q60bot.bot.BotTexts
-import com.grcanosa.q60bot.bot.Q60Bot.CountDownKeyboard
+import com.grcanosa.q60bot.bot.Q60Bot.{CountDownKeyboard, UserResult}
 import com.grcanosa.q60bot.model.{Q60User, Question}
 import com.grcanosa.q60bot.quizz.PlayerActor.{NO_QUESTION, QUESTION, QuestionTimeIsOver, STARTING}
 import com.grcanosa.q60bot.quizz.QuizzActor.NewQuestionToUsers
+
 import scala.concurrent.duration._
 
 object PlayerActor {
@@ -32,7 +33,7 @@ class PlayerActor(val user: Q60User, val botActor: ActorRef) extends Actor{
 
   var state: Int = STARTING
 
-  var points = 0.toInt
+  var points = 0
 
   var currQuestion: Option[Question] = None
 
@@ -51,9 +52,11 @@ class PlayerActor(val user: Q60User, val botActor: ActorRef) extends Actor{
       currQuestionAnswered = true
       if(txt == currQuestion.get.solution) {
         currQuestionOK = true
+        points += currQuestion.map(_.points).getOrElse(0)
       }else {
         currQuestionOK = false
       }
+      mylog.info(s"User ${user.chatId} has $points puntos")
     }
   }
 
@@ -108,6 +111,7 @@ class PlayerActor(val user: Q60User, val botActor: ActorRef) extends Actor{
           botActor ! SendMessage(user.chatId,BotTexts.questionAnsweredKO,replyMarkup = Some(removeKeyboard))
         }
       }
+      botActor ! UserResult(user,points)
     }
   }
 

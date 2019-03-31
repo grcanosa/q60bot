@@ -22,7 +22,7 @@ object BotData {
 
   def loadQuestions() = {
     val bufferedSource: BufferedSource = scala.io.Source.fromFile("src/main/resources/preguntas.csv")
-    bufferedSource.getLines().flatMap{
+      bufferedSource.getLines().flatMap{
       l =>
         //mylog.info(l)
         val spli: Array[String] = l.split('|').map(_.trim)
@@ -51,15 +51,32 @@ object BotData {
   }
 
   def loadUsers(): Seq[Q60User] = {
-    Seq.empty
+    mylog.info("Loading Users")
+    val bufferedSource: BufferedSource = scala.io.Source.fromFile("users.csv")
+    bufferedSource.getLines().map{
+      l => {
+        val spli: Array[String] = l.split('|').map(_.trim)
+        val first = if(spli(1) != "") Some(spli(1)) else None
+        val last = if(spli(2) != "") Some(spli(2)) else None
+        val username = if(spli(3) != "") Some(spli(3)) else None
+        val user = Q60User(spli(0).toLong,first,last,username)
+        mylog.info(s"Loading: $user")
+        user
+      }
+    }.toSeq
   }
 
   def saveUsers(users: Seq[Q60User]) = {
+    mylog.info("Saving users")
     import java.io._
     val fil = new PrintWriter(new File("users.csv"))
     users.foreach(u => {
-
+      val s = u.chatId.toString+"|"+u.firstName.getOrElse("")+"|"+u.lastName.getOrElse("")+"|"+u.username.getOrElse("")
+      mylog.info(s"Saving: $s")
+      fil.println(s)
     })
+    fil.flush()
+    fil.close()
   }
 
   lazy val allQuestions: Seq[Question] = loadQuestions().toSeq

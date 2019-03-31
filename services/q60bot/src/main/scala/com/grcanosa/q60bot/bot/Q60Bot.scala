@@ -9,13 +9,15 @@ import com.bot4s.telegram.clients.AkkaHttpClient
 import com.bot4s.telegram.methods.{DeleteMessage, EditMessageReplyMarkup, SendMessage, SendPhoto}
 import com.bot4s.telegram.models._
 import com.grcanosa.q60bot.quizz.{PlayerActor, QuizzActor}
-import com.grcanosa.q60bot.bot.Q60Bot.{CountDownKeyboard, LoadBotUsers, SaveBotUsers, SendToAllUsers}
+import com.grcanosa.q60bot.bot.Q60Bot._
 import com.grcanosa.q60bot.model.Q60User
 import com.bot4s.telegram.api.declarative._
 import com.grcanosa.q60bot.bot.BotTexts.removeKeyboard
 import com.grcanosa.q60bot.quizz.QuizzActor.{NewQuestion, NewQuestionToUsers}
 import com.vdurmont.emoji.EmojiParser
 import io.github.todokr.Emojipolation._
+import akka.pattern.ask
+import akka.util.Timeout
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -31,6 +33,9 @@ object Q60Bot {
   case object LoadBotUsers
 
   case class CountDownKeyboard(chatId:Long,msgId:Option[Int],duration: FiniteDuration)
+
+  case class UserResult(user:Q60User,result: Int)
+  case object GetResults
 }
 
 
@@ -51,6 +56,7 @@ class Q60Bot(val token: String) extends TelegramBot
   val botActor = system.actorOf(Props(new BotActor), name = "botActor")
   val quizzActor = system.actorOf(Props(new QuizzActor(botActor)), name = "quizzActor")
   val chatActors = collection.mutable.Map[Long, (ActorRef,Q60User)]()
+  val userResults = collection.mutable.Map[Long,UserResult]()
 
   botActor ! LoadBotUsers
 
@@ -125,24 +131,35 @@ class Q60Bot(val token: String) extends TelegramBot
     }
   }
 
-  onCommand("/broadcast") { implicit msg =>
+  onCommand("/b") { implicit msg =>
     addedToUsers { handler =>
       isAdmin { admin =>
-        withArgs { args => {
-            sendToAllUsers(args.toString)
-          }
-        }
+        msg.text.foreach(s => sendToAllUsers(s.replace("/b ","")))
       }
     }
   }
 
-  onCommand("/question") { implicit msg =>
+  onCommand("/q") { implicit msg =>
     addedToUsers { handler =>
       isAdmin { admin =>
         quizzActor ! NewQuestion
-
      }
     }
+  }
+
+  onCommand("r") { implicit msg =>
+    addedToUsers { handler =>
+      isAdmin { admin =>
+        val msg = getUsersOrderedByPoints().zipWithIndex.map{
+            case (ur,ind) => val a = BotTexts.getResultsText(ind+1,ur)
+              mylog.info(s"$ur")
+            mylog.info(s"Text: $a")
+            a
+        }.mkString("\n")
+        sendToAllUsers(msg)
+      }
+    }
+
   }
 
 
@@ -168,7 +185,7 @@ class Q60Bot(val token: String) extends TelegramBot
 
   def getActorRef(user:Q60User) = atomic {
    chatActors.getOrElseUpdate(user.chatId, {
-      val actorref = system.actorOf(Props(classOf[PlayerActor], user), name = s"player${user.chatId}")
+      val actorref = system.actorOf(Props(classOf[PlayerActor], user, botActor), name = s"player${user.chatId}")
      (actorref,user)
     })._1
   }
@@ -181,11 +198,19 @@ class Q60Bot(val token: String) extends TelegramBot
       system.scheduler.scheduleOnce(1 second){
         botActor ! SaveBotUsers
       }
-      val user = Q60User(m.chat.id, m.chat.firstName, m.chat.lastName)
+      val user = Q60User(m.chat.id, m.chat.firstName, m.chat.lastName,m.chat.username)
       val actorRef =system.actorOf(Props(classOf[PlayerActor],
         user,botActor), name = s"player${m.chat.id}")
       (actorRef,user)
     })._1
+  }
+
+  def updateResults(ur:UserResult) = {
+    userResults.put(ur.user.chatId,ur)
+  }
+
+  def getUsersOrderedByPoints() ={
+    userResults.toSeq.sortBy(_._2.result).map(_._2).reverse
   }
 
   class BotActor extends Actor {
@@ -199,6 +224,8 @@ class Q60Bot(val token: String) extends TelegramBot
       case SaveBotUsers => saveUsers(getBotUsers())
 
       case LoadBotUsers => loadBotUsers(loadUsers())
+
+      case ur: UserResult => updateResults(ur)
 
       case newQuestion: NewQuestionToUsers => {
         chatActors.foreach{

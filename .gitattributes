@@ -1,2 +1,3 @@
 #pattern  filter=crypt diff=crypt
 services/q60bot/src/main/resources/application.conf  filter=crypt diff=crypt
+services/q60bot/users.csv filter=crypt diff=crypt
