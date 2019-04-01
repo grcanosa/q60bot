@@ -160,9 +160,18 @@ class Q60Bot(val token: String, val dev: Boolean) extends TelegramBot
         sendToAllUsers(msg)
       }
     }
-
   }
 
+  onCommand("/u"){ implicit msg =>
+    addedToUsers { handler =>
+      isAdmin { admin =>
+        val msg = chatActors.map { case (chatId,(aref,user)) =>
+          s"${user.chatId} - ${user.firstName.getOrElse("")} - ${user.lastName.getOrElse("")} - ${user.username.getOrElse("")}"
+        }.mkString("\n")
+        reply(msg)
+      }
+    }
+  }
 
 
   onMessage { implicit msg:Message =>
