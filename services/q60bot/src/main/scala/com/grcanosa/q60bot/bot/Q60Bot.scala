@@ -132,6 +132,11 @@ class Q60Bot(val token: String, val dev: Boolean) extends TelegramBot
     }
   }
 
+  onCommand("/name") { implicit msg => addedToUsers { handler =>
+      mylog.info("Changing name")
+    }
+  }
+
   onCommand("/b") { implicit msg =>
     addedToUsers { handler =>
       isAdmin { admin =>
@@ -148,7 +153,7 @@ class Q60Bot(val token: String, val dev: Boolean) extends TelegramBot
     }
   }
 
-  onCommand("r") { implicit msg =>
+  onCommand("/r") { implicit msg =>
     addedToUsers { handler =>
       isAdmin { admin =>
         val msg = getUsersOrderedByPoints().zipWithIndex.map{
