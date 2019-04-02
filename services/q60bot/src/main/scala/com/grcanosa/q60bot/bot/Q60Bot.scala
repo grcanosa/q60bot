@@ -58,6 +58,7 @@ class Q60Bot(val token: String, val dev: Boolean) extends TelegramBot
   val quizzActor = system.actorOf(Props(new QuizzActor(botActor)), name = "quizzActor")
   val chatActors = collection.mutable.Map[Long, (ActorRef,Q60User)]()
   val userResults = collection.mutable.Map[Long,UserResult]()
+  val photosIds = collection.mutable.Map[String, String]()
 
   botActor ! LoadBotUsers
 
@@ -65,9 +66,20 @@ class Q60Bot(val token: String, val dev: Boolean) extends TelegramBot
     f
   }
 
-  def replyWithPhoto(photo               : InputFile)
-                    (implicit msg: Message): Future[Message] = {
-    request(SendPhoto(msg.chat.id, photo,replyMarkup = Some(removeKeyboard)))
+  def replyWithPhoto(photoPath: String)
+                    (implicit msg: Message) = {
+    val inputFile = photosIds.get(photoPath) match {
+      case Some(photoId) => InputFile(photoId)
+      case None => InputFile(Paths.get(photoPath))
+    }
+    request(SendPhoto(msg.chat.id, inputFile,replyMarkup = Some(removeKeyboard)))
+          .map(_.photo)
+          .collect{case Some(a) if a.nonEmpty => a}
+          .map(lp => (lp.head,photoPath))
+              .foreach{case (photoSize,path) => photosIds.getOrElseUpdate(path,photoSize.fileId)}
+
+
+
   }
 
   def isAdmin(ok: Action[User])(implicit msg: Message): Unit = {
@@ -128,7 +140,7 @@ class Q60Bot(val token: String, val dev: Boolean) extends TelegramBot
       mylog.info("Replying foto")
       val fotopath = getPhotoPath()
       mylog.info(s"FotoPath $fotopath")
-      replyWithPhoto(InputFile(Paths.get(fotopath)))
+      replyWithPhoto(fotopath)
     }
   }
 
