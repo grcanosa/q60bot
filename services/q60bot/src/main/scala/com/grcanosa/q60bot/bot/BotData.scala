@@ -40,8 +40,9 @@ object BotData {
             val respC = spli(4)
             val respD = spli(5)
             val solution = spli(6)
+            val photo = if(spli.length > 7) Some(spli(7)) else None
             //mylog.info("Returning question")
-            Some(Question(question,points,respA,respB,respC,respD,solution))
+            Some(Question(question,points,respA,respB,respC,respD,solution,photo))
           }.getOrElse(None)
         }else{
           mylog.warn(s"Line $l has less than 3 fields")

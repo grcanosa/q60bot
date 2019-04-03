@@ -72,12 +72,14 @@ class Q60Bot(val token: String, val dev: Boolean) extends TelegramBot
       case Some(photoId) => InputFile(photoId)
       case None => InputFile(Paths.get(photoPath))
     }
-    request(SendPhoto(msg.chat.id, inputFile,replyMarkup = Some(removeKeyboard)))
+    val futMsg = request(SendPhoto(msg.chat.id, inputFile,replyMarkup = Some(removeKeyboard)))
+      futMsg
           .map(_.photo)
           .collect{case Some(a) if a.nonEmpty => a}
           .map(lp => (lp.head,photoPath))
               .foreach{case (photoSize,path) => photosIds.getOrElseUpdate(path,photoSize.fileId)}
 
+    futMsg.map(printPhotoId)
 
 
   }
@@ -242,11 +244,18 @@ def getActorRef(chatId: Long) = {
     userResults.toSeq.sortBy(_._2.result).map(_._2).reverse
   }
 
+  def printPhotoId(m:Message) = {
+    m.photo.foreach(sp => sp.foreach{
+      photoSize => mylog.info(s"Photo ID is ${photoSize.fileId}")
+    })
+  }
+
   class BotActor extends Actor {
 
     override def receive = {
 
       case sm : SendMessage => request(sm)
+      case sp : SendPhoto => request(sp)
 
       case SendToAllUsers(msg) => sendToAllUsers(msg)
 

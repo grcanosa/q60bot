@@ -9,4 +9,5 @@ case class Question(question:String, points: Int,
                     respB: String,
                     respC: String,
                     respD: String,
-                    solution: String)
+                    solution: String,
+                    photo: Option[String] = None)
