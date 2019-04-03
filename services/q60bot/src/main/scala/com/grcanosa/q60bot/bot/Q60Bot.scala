@@ -6,7 +6,7 @@ import akka.actor.{Actor, ActorRef, Props}
 import com.bot4s.telegram.api.declarative.{Action, Commands}
 import com.bot4s.telegram.api._
 import com.bot4s.telegram.clients.AkkaHttpClient
-import com.bot4s.telegram.methods.{DeleteMessage, EditMessageReplyMarkup, SendMessage, SendPhoto}
+import com.bot4s.telegram.methods._
 import com.bot4s.telegram.models._
 import com.grcanosa.q60bot.quizz.{PlayerActor, QuizzActor}
 import com.grcanosa.q60bot.bot.Q60Bot._
@@ -17,15 +17,29 @@ import com.grcanosa.q60bot.quizz.QuizzActor.{NewQuestion, NewQuestionToUsers}
 import com.vdurmont.emoji.EmojiParser
 import io.github.todokr.Emojipolation._
 import akka.pattern.ask
-import akka.util.Timeout
+import akka.util.{ByteString, Timeout}
 import com.grcanosa.q60bot.quizz.PlayerActor.QuestionTimeIsOver
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.{HttpRequest, Uri}
+import akka.http.scaladsl.unmarshalling.Unmarshal
 
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
+import sys.process._
+import java.net.URL
+import java.io.File
+
+
+
+
 object Q60Bot {
+
+  def fileDownloader(url: String, filename: String) = {
+    new URL(url) #> new File(filename) !!
+  }
 
   case class SendToAllUsers(msg: String)
 
@@ -120,7 +134,7 @@ class Q60Bot(val token: String, val dev: Boolean) extends TelegramBot
   }
 
   def isNotCommand(msg:Message): Boolean = {
-    msg.text.exists(!_.startsWith("/"))
+    msg.text.exists(!_.startsWith("/")) || msg.text.isEmpty
   }
 
 
@@ -184,23 +198,46 @@ class Q60Bot(val token: String, val dev: Boolean) extends TelegramBot
   onCommand("/u"){ implicit msg =>
     addedToUsers { handler =>
       isAdmin { admin =>
-        val msg = chatActors.map { case (chatId,(aref,user)) =>
+        val msg2 = chatActors.map { case (chatId,(aref,user)) =>
           s"${user.chatId} - ${user.firstName.getOrElse("")} - ${user.lastName.getOrElse("")} - ${user.username.getOrElse("")}"
         }.mkString("\n")
-        reply(msg)
+        reply(msg2)
       }
     }
   }
 
 
+
+
   onMessage { implicit msg:Message =>
     addedToUsers { handler =>
-      isNotCommand { _ =>
+      //isNotCommand { _ =>
         mylog.info("Handler message")
-        handler ! msg
+        if(msg.photo.isDefined){
+          mylog.info("photo is defined")
+          request(GetFile(msg.photo.get.head.fileId)).onComplete{
+            case Success(file) =>
+              file.filePath match {
+
+                case Some(filePath) =>
+                  // See https://core.telegram.org/bots/api#getfile
+                  val url = s"https://api.telegram.org/file/bot${token}/${filePath}"
+
+                  fileDownloader(url,"test.png")
+
+                case None =>
+                  println("No file_path was returned")
+              }
+
+            case Failure(e) =>
+              logger.error("Exception: " + e) // poor's man logging
+          }
+        }else {
+          handler ! msg
+        }
       }
 
-    }
+    //}
   }
 
 
