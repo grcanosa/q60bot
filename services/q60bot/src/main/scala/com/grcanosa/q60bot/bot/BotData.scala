@@ -7,6 +7,9 @@ import com.grcanosa.q60bot.model.{Q60User, Question}
 import scala.io.BufferedSource
 import scala.util.{Random, Try}
 
+
+
+
 object BotData {
 
   import com.grcanosa.q60bot.utils.Q60Utils._
@@ -19,7 +22,7 @@ object BotData {
   lazy val photoPath = config.getString("bot.photoPath")
 
 
-  val questionAnswerDelay = 20 seconds
+  val questionAnswerDelay = 15 seconds
 
   def loadQuestions() = {
     val bufferedSource: BufferedSource = scala.io.Source.fromFile("src/main/resources/preguntas.csv")
@@ -55,21 +58,34 @@ object BotData {
   def loadUsers(dev: Boolean = false): Seq[Q60User] = {
     mylog.info(s"Loading Users from ${getFileName(dev)}")
     val bufferedSource: BufferedSource = scala.io.Source.fromFile(getFileName(dev))
-    bufferedSource.getLines().map{
+    bufferedSource.getLines().flatMap{
       l => {
         val spli: Array[String] = l.split('|').map(_.trim)
-        val first = if(spli(1) != "") Some(spli(1)) else None
-        val last = if(spli(2) != "") Some(spli(2)) else None
-        val username = if(spli(3) != "") Some(spli(3)) else None
-        val user = Q60User(spli(0).toLong,first,last,username)
-        mylog.info(s"Loading: $user")
-        user
+        if(spli.length >= 4 ) {
+          val first = if (spli(1) != "") Some(spli(1)) else None
+          val last = if (spli(2) != "") Some(spli(2)) else None
+          val username = if (spli(3) != "") Some(spli(3)) else None
+          val user = Q60User(spli(0).toLong, first, last, username)
+          mylog.info(s"Loading: $user")
+          Some(user)
+        }else{
+          None
+        }
       }
     }.toSeq
   }
 
   def getFileName(dev: Boolean = false) = {
     if(dev)"users_dev.csv" else "users.csv"
+  }
+
+  def downloadFile(url: String, filePath: String) = {
+    import sys.process._
+    import java.net.URL
+    import java.io.File
+    val file = new File(filePath)
+    file.createNewFile()
+    new URL(url) #> new File(filePath) !!
   }
 
   def saveUsers(users: Seq[Q60User], dev: Boolean = false) = {
