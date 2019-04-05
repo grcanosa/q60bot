@@ -15,6 +15,7 @@ import scala.concurrent.duration.FiniteDuration
 object BotTexts {
   import io.github.todokr.Emojipolation._
 
+  import com.grcanosa.q60bot.utils.Q60Utils._
 
   val fechacumple = LocalDateTime.of(2019,4,28,13,0,0)
 
@@ -28,8 +29,7 @@ object BotTexts {
         Hola, soy el bot encargado del cumpleaños de Miguel Ángel!! :birthday:
                |El cumpleaños se celebrará el día 28 de Abril a partir de las 13:00 horas, quedan ${diff.getSeconds.toString} segundos (${days.toString} dias y ${hours.toString} horas) para el cumpleaños.
                |Debéis traer ganas de comer :hamburger: :pizza: :shallow_pan_of_food:, beber :cocktail: :wine_glass: :tropical_drink: :beer: y pasarlo bien :tada: :confetti_ball: :balloon:.
-""".stripMargin
-    EmojiParser.parseToUnicode(s)
+""".stripMargin.emojize
   }
 
   val reglasText =
@@ -40,23 +40,51 @@ object BotTexts {
       |3) No se habla de política o las elecciones.
     """.stripMargin
 
-  val unkownCmdText = emoji"No conozco ese comando... :cry:"
+  def getRandomFromList(l: Seq[Any]) = {
 
-  val quizzNotStartedYet = emoji"El Q60 no ha empezado todavía..."
+  }
 
-  val rootCmdOnlyText = "Comando solo permitido para el administrador..."
+  def unkownCmdText: String = Seq(
+    "No conozco ese comando... :cry:" ,
+    "Ahí me has pillado... xD :flushed_face:",
+    "No se de qué me hablas..."
+  ).chooseRandomStr().emojize
 
-  val unkownQuizzAnswer = emoji"La respuesta tiene que ser A,B,C o D :sob:"
+  val quizzNotStartedYet = "El Q60 no ha empezado todavía...".emojize
 
-  val questionAlreadyAnswered = emoji"Ya has contestado a la pregunta, tamprosill@... :disappointed: "
+  val rootCmdOnlyText = Seq(
+    "Comando solo permitido para el administrador.",
+    "No has visto que ponía RESTRICTED??"
+  ).chooseRandomStr().emojize
 
-  val questionNotAnswered = emoji"No has respondido la pregunta... Hay que se más rápido la próxima vez..."
+  val unkownQuizzAnswer = "La respuesta tiene que ser A,B,C o D :sob:".emojize
 
-  val questionAnsweredOK = emoji"Enhorabuena!! Pregunta acertada"
+  def questionAlreadyAnswered = Seq(
+    "Ya has contestado a la pregunta, tamprosill@... :disappointed: ",
+    "Uy, uy, uy, uy.... Qué tramposo... Solo puedes contestar una vez..."
+  ).chooseRandomStr().emojize
 
-  val questionAnsweredKO = emoji"Ohhh... La próxima seguro que aciertas..."
+  def questionNotAnswered = Seq(
+    "No has respondido la pregunta... Hay que se más rápido la próxima vez...",
+    "Pero si no has respondido!! Elige al azar aunque sea, tienes un 25% de posibilidades de acertar!"
+  ).chooseRandomStr().emojize
 
-  val answerReceived = emoji"Respuesta recibida!"
+  def questionAnsweredOK = Seq(
+    "Enhorabuena!! Pregunta acertada!",
+    ":tada::tada::tada::tada::confetti_ball::confetti_ball::confetti_ball::confetti_ball:"
+  ).chooseRandomStr().emojize
+
+  def questionAnsweredKO = Seq(
+    "Ohhh... La próxima seguro que aciertas...",
+    "Vaya :sad:, ánimo que ésta era difícil!"
+  ).chooseRandomStr().emojize
+
+  def answerReceived = Seq(
+    "Respuesta recibida!",
+    "Ok!",
+    "Claro.",
+    "Me lo apunto"
+  ).chooseRandomStr().emojize
 
   val noQuestionRightNow = emoji"Espera un poco a qué te haga una pregunta... :wink:"
 

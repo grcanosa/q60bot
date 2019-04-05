@@ -57,22 +57,24 @@ object BotData {
 
   def loadUsers(dev: Boolean = false): Seq[Q60User] = {
     mylog.info(s"Loading Users from ${getFileName(dev)}")
-    val bufferedSource: BufferedSource = scala.io.Source.fromFile(getFileName(dev))
-    bufferedSource.getLines().flatMap{
-      l => {
-        val spli: Array[String] = l.split('|').map(_.trim)
-        if(spli.length >= 4 ) {
-          val first = if (spli(1) != "") Some(spli(1)) else None
-          val last = if (spli(2) != "") Some(spli(2)) else None
-          val username = if (spli(3) != "") Some(spli(3)) else None
-          val user = Q60User(spli(0).toLong, first, last, username)
-          mylog.info(s"Loading: $user")
-          Some(user)
-        }else{
-          None
+    Try{
+      val bufferedSource: BufferedSource = scala.io.Source.fromFile(getFileName(dev))
+      bufferedSource.getLines().flatMap{
+        l => {
+          val spli: Array[String] = l.split('|').map(_.trim)
+          if(spli.length >= 4 ) {
+            val first = if (spli(1) != "") Some(spli(1)) else None
+            val last = if (spli(2) != "") Some(spli(2)) else None
+            val username = if (spli(3) != "") Some(spli(3)) else None
+            val user = Q60User(spli(0).toLong, first, last, username)
+            mylog.info(s"Loading: $user")
+            Some(user)
+          }else{
+            None
+          }
         }
-      }
-    }.toSeq
+      }.toSeq
+    }.getOrElse(Seq.empty[Q60User])
   }
 
   def getFileName(dev: Boolean = false) = {
