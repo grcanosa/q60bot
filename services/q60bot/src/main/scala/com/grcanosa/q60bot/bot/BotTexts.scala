@@ -35,19 +35,16 @@ object BotTexts {
   val reglasText =
     """
       |Las reglas de la fiesta son las siguientes:
-      |1) No se habla de política o las elecciones.
-      |2) No se habla de política o las elecciones.
-      |3) No se habla de política o las elecciones.
+      |1) No se habla de política o de las elecciones.
+      |2) No se habla de política o de las elecciones.
+      |3) No se habla de política o de las elecciones.
     """.stripMargin
-
-  def getRandomFromList(l: Seq[Any]) = {
-
-  }
 
   def unkownCmdText: String = Seq(
     "No conozco ese comando... :cry:" ,
     "Ahí me has pillado... xD :flushed_face:",
-    "No se de qué me hablas..."
+    "No se de qué me hablas...",
+    "No te entiendo, lo siento..."
   ).chooseRandomStr().emojize
 
   val quizzNotStartedYet = "El Q60 no ha empezado todavía...".emojize
@@ -92,7 +89,12 @@ object BotTexts {
 
   val requestNewName = "Dime como quieres llamarte en la clasificación."
 
-  val changeNameAccepted = "Perfecto!"
+  def changeNameAccepted = Seq(
+    "Perfecto!",
+    "Entendido!",
+    "Muy bien.",
+    "Ok"
+  ).chooseRandomStr().emojize
 
   val answersKeyboard = ReplyKeyboardMarkup(Seq(
     Seq(KeyboardButton("A"),KeyboardButton("B"))
