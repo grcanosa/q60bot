@@ -161,7 +161,7 @@ class PlayerActor(iniUser: Q60User, val botActor: ActorRef) extends Actor{
 
   override def receive()={
     case m:Message => {
-      mylog.info(s"Processing message ${m.text.get}, state: ${state}")
+      mylog.info(s"${user.chatId}- Message ${m.text.get}, state: ${state}")
       if(state == STARTING){
         handleStartingMessage(m)
       }

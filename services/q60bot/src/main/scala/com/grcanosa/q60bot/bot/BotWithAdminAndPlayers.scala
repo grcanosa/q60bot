@@ -140,7 +140,9 @@ with Messages{
       }
 
       case UpdateUser(user) => {
-
+        chatHandlers.get(user.chatId).foreach(ch =>
+          chatHandlers.update(user.chatId,ch.copy(user = user))
+        )
       }
 
     }

@@ -21,6 +21,8 @@ object BotData {
 
   lazy val photoPath = config.getString("bot.photoPath")
 
+  lazy val altPhotoPath = config.getString("bot.altPhotoPath")
+
 
   val questionAnswerDelay = 15 seconds
 
@@ -85,9 +87,9 @@ object BotData {
     import sys.process._
     import java.net.URL
     import java.io.File
-    val file = new File(filePath)
-    file.createNewFile()
-    new URL(url) #> new File(filePath) !!
+    val rand = new Random
+    val fileName = altPhotoPath + "/" + "photo_"+rand.nextInt(100000)+".jpg"
+    new URL(url) #> new File(fileName) !!
   }
 
   def saveUsers(users: Seq[Q60User], dev: Boolean = false) = {

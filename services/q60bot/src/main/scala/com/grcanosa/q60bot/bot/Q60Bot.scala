@@ -57,9 +57,10 @@ class Q60Bot(token: String, rootId: Long, dev: Boolean)
   onCommand("/b") { implicit msg =>
     addedToUsers { _ =>
       isAdmin { _ =>
-        msg.text.foreach(s =>
-          botActor ! SendToAllUsers(Some(SendMessage(0.toLong,s.replace("/b ",""))),None)
-        )
+        msg.text.foreach{
+          case "/b" => mylog.info("Broadcast comment without append, ignoring")
+          case s => botActor ! SendToAllUsers(Some(SendMessage(0.toLong,s.replace("/b",""))),None)
+        }
       }
     }
   }
@@ -85,10 +86,13 @@ class Q60Bot(token: String, rootId: Long, dev: Boolean)
   onCommand("/u") { implicit msg =>
     addedToUsers  { _ =>
       isAdmin { _ =>
-        botActor ! SendToAllUsers(Some(SendMessage(0.toLong,chatHandlers.map{
-                                                                case (_,ch) => ch.user.displayName
-                                                                }.mkString("\n")
-                                    )))
+        val txtMsg = BotTexts.userListText(chatHandlers.map{
+                                        case (_,ch) => ch.user.displayName
+                                        }.toSeq)
+        msg.text.foreach{
+          case "/u" => botActor ! SendMessage(rootId,(":ok_hand: "+txtMsg).emojize)
+          case "/u ALL" => botActor ! SendToAllUsers(Some(SendMessage(0.toLong,txtMsg)))
+        }
       }
     }
   }
@@ -107,7 +111,7 @@ class Q60Bot(token: String, rootId: Long, dev: Boolean)
 
   def handlePhotoMessage(msg:Message) = {
     mylog.info("photo is defined")
-    request(GetFile(msg.photo.get.head.fileId)).onComplete{
+    request(GetFile(msg.photo.get.reverse.head.fileId)).onComplete{
       case Success(file) =>
         file.filePath match {
           case Some(filePath) =>

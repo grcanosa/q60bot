@@ -3,6 +3,7 @@ package com.grcanosa.q60bot.bot
 import akka.actor.{Actor, ActorRef}
 import com.bot4s.telegram.methods.SendMessage
 import com.grcanosa.q60bot.bot.BotWithAdminAndPlayers.{SendToAllHandlers, SendToAllUsers}
+import com.grcanosa.q60bot.bot.PlayerActor.UpdateUser
 import com.grcanosa.q60bot.model.{Q60User, Question}
 
 
@@ -66,6 +67,12 @@ class QuizzActor(val botActor: ActorRef) extends Actor{
         case (ur, ind) => BotTexts.getResultsText(ind+1,ur)
       }.mkString("\n")
       botActor ! SendToAllUsers(Some(SendMessage(0.toLong,txtmsg)))
+    }
+
+    case UpdateUser(user) => {
+      userResults.get(user.chatId).foreach(ur =>
+        userResults.update(user.chatId,ur.copy(user = user))
+      )
     }
 
 

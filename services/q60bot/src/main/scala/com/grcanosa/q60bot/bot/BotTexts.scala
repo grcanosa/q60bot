@@ -25,7 +25,7 @@ object BotTexts {
     val days: Long = diff.getSeconds/(3600*24)
     val hours: Long = diff.minusDays(days).getSeconds/3600
 
-    val s = s"""
+    s"""
         Hola, soy el bot encargado del cumpleaños de Miguel Ángel!! :birthday:
                |El cumpleaños se celebrará el día 28 de Abril a partir de las 13:00 horas, quedan ${diff.getSeconds.toString} segundos (${days.toString} dias y ${hours.toString} horas) para el cumpleaños.
                |Debéis traer ganas de comer :hamburger: :pizza: :shallow_pan_of_food:, beber :cocktail: :wine_glass: :tropical_drink: :beer: y pasarlo bien :tada: :confetti_ball: :balloon:.
@@ -42,7 +42,7 @@ object BotTexts {
 
   def unkownCmdText: String = Seq(
     "No conozco ese comando... :cry:" ,
-    "Ahí me has pillado... xD :flushed_face:",
+    "Ahí me has pillado... xD :flushed:",
     "No se de qué me hablas...",
     "No te entiendo, lo siento..."
   ).chooseRandomStr().emojize
@@ -58,42 +58,42 @@ object BotTexts {
 
   def questionAlreadyAnswered = Seq(
     "Ya has contestado a la pregunta, tamprosill@... :disappointed: ",
-    "Uy, uy, uy, uy.... Qué tramposo... Solo puedes contestar una vez..."
+    "Uy, uy, uy, uy.... Qué tramposo... :astonished: Solo puedes contestar una vez..."
   ).chooseRandomStr().emojize
 
   def questionNotAnswered = Seq(
     "No has respondido la pregunta... Hay que se más rápido la próxima vez...",
-    "Pero si no has respondido!! Elige al azar aunque sea, tienes un 25% de posibilidades de acertar!"
+    "Pero si no has respondido!! Elige al azar aunque sea, tienes un 25% de posibilidades de acertar! :dart:"
   ).chooseRandomStr().emojize
 
   def questionAnsweredOK = Seq(
-    "Enhorabuena!! Pregunta acertada!",
-    ":tada::tada::tada::tada::confetti_ball::confetti_ball::confetti_ball::confetti_ball:"
+    "¡Respuesta correcta! ¡¡Enhorabuena!! :upside_down:",
+    "¡Has acertado! ¡Eres estupend@! :tada: :tada: :tada: :tada: :confetti_ball: :confetti_ball: :confetti_ball: :confetti_ball:"
   ).chooseRandomStr().emojize
 
   def questionAnsweredKO = Seq(
-    "Ohhh... La próxima seguro que aciertas...",
-    "Vaya :sad:, ánimo que ésta era difícil!"
+    "Respuesta incorrecta. Ohhh... La próxima seguro que aciertas... :crying_cat_face:",
+    "No has acertado. Vaya :cry:, ánimo que ésta era difícil!"
   ).chooseRandomStr().emojize
 
   def answerReceived = Seq(
     "Respuesta recibida!",
     "Ok!",
-    "Claro.",
-    "Me lo apunto"
+    "Claro, guardando la respuesta... :gear: :computer:",
+    "Apuntado queda!"
   ).chooseRandomStr().emojize
 
-  val noQuestionRightNow = emoji"Espera un poco a qué te haga una pregunta... :wink:"
+  val noQuestionRightNow = "Espera un poco a qué te haga una pregunta... :wink:".emojize
 
-  val cannotChangeNameRightNow = emoji"Ahora mismo no puedes cambiar tu nombre en la clasificación!"
+  val cannotChangeNameRightNow = "Ahora mismo no puedes cambiar tu nombre en la clasificación!".emojize
 
-  val requestNewName = "Dime como quieres llamarte en la clasificación."
+  val requestNewName = "Dime como quieres llamarte en la clasificación.".emojize
 
   def changeNameAccepted = Seq(
     "Perfecto!",
     "Entendido!",
     "Muy bien.",
-    "Ok"
+    "Ok."
   ).chooseRandomStr().emojize
 
   val answersKeyboard = ReplyKeyboardMarkup(Seq(
@@ -108,12 +108,18 @@ object BotTexts {
   def getPositionText(position:Int)= {
 
     position match {
-      case 1 => EmojiParser.parseToUnicode(":first_place_medal:")
-      case 2 => EmojiParser.parseToUnicode(":second_place_medal:")
-      case 3 => EmojiParser.parseToUnicode(":third_place_medal:")
+      case 1 => ":first_place_medal:".emojize
+      case 2 => ":second_place_medal:".emojize
+      case 3 => ":third_place_medal:".emojize
       case n if n < 10 => position.toString+" "
       case _ => position.toString
     }
+  }
+
+  def userListText(namesL:Seq[String]) = {
+    val users = namesL.zipWithIndex.map{ case (s,ind) => (ind+1).toString+") "+s}.mkString("\n")
+    s"""Los usuarios registrados son:\n$users
+    """.emojize
   }
 
   def getResultsText(position: Int, userR: UserResult) = {
