@@ -85,7 +85,10 @@ class Q60Bot(token: String, rootId: Long, dev: Boolean)
   onCommand("/u") { implicit msg =>
     addedToUsers  { _ =>
       isAdmin { _ =>
-
+        botActor ! SendToAllUsers(Some(SendMessage(0.toLong,chatHandlers.map{
+                                                                case (_,ch) => ch.user.displayName
+                                                                }.mkString("\n")
+                                    )))
       }
     }
   }

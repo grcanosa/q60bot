@@ -40,7 +40,7 @@ with Messages{
   override val client: RequestHandler = new AkkaHttpClient(token)
 
   val botActor = system.actorOf(Props(new BotActor), name = "botActor")
-  val chatActors = collection.mutable.Map[Long, ChatHandler]()
+  val chatHandlers = collection.mutable.Map[Long, ChatHandler]()
   val photosIds = collection.mutable.Map[String, String]()
 
 
@@ -57,7 +57,7 @@ with Messages{
 
   }
 
-  private def atomic[T](f: => T): T = chatActors.synchronized {
+  private def atomic[T](f: => T): T = chatHandlers.synchronized {
     f
   }
 
@@ -82,18 +82,18 @@ with Messages{
 
 
   def getActorRef(user:Q60User) = atomic {
-    chatActors.getOrElseUpdate(user.chatId, {
+    chatHandlers.getOrElseUpdate(user.chatId, {
       val actorRef = system.actorOf(Props(classOf[PlayerActor], user, botActor), name = s"player${user.chatId}")
       ChatHandler(actorRef,user)
     }).actorRef
   }
 
   def getActorRef(chatId: Long) = {
-    chatActors.get(chatId).map(_.actorRef)
+    chatHandlers.get(chatId).map(_.actorRef)
   }
 
   def getActorRef(m: Message): ActorRef = atomic {
-    chatActors.getOrElseUpdate(m.chat.id, {
+    chatHandlers.getOrElseUpdate(m.chat.id, {
       system.scheduler.scheduleOnce(1 second){
         botActor ! SaveBotUsers
       }
@@ -105,7 +105,7 @@ with Messages{
   }
 
   def saveBotUsers() = {
-    BotData.saveUsers(chatActors.map(_._2.user).toSeq)
+    BotData.saveUsers(chatHandlers.map(_._2.user).toSeq)
   }
 
   def loadBotUsers() = {
@@ -119,12 +119,12 @@ with Messages{
       case sp: SendPhoto => request(sp)
       case em: EditMessageReplyMarkup => request(em)
       case dm: DeleteMessage => request(dm)
-      case SendToAllUsers(sm,sp) => chatActors.foreach{
+      case SendToAllUsers(sm,sp) => chatHandlers.foreach{
         case (chatId,_) =>
           sm.foreach(self ! _.copy(chatId=chatId))
           sp.foreach(self ! _.copy(chatId=chatId))
       }
-      case SendToAllHandlers(m) => chatActors.foreach{
+      case SendToAllHandlers(m) => chatHandlers.foreach{
         case (_,chatH) => chatH.actorRef ! m
       }
       case SaveBotUsers => saveBotUsers()

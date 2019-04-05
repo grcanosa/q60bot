@@ -87,7 +87,7 @@ object BotTexts {
   }
 
   def getResultsText(position: Int, userR: UserResult) = {
-    s"${getPositionText(position)}- ${userR.result.toString} puntos - ${userR.user.firstName.getOrElse("")} ${userR.user.lastName.getOrElse("")}"
+    s"${getPositionText(position)}- ${userR.result.toString} puntos - ${userR.user.displayName}"
   }
 
   val t5sec = EmojiParser.parseToUnicode(":bomb::bomb::bomb::bomb::bomb:")
