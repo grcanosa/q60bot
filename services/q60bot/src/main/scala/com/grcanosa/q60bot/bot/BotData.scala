@@ -23,12 +23,13 @@ object BotData {
 
   lazy val altPhotoPath = config.getString("bot.altPhotoPath")
 
+  lazy val NONESTRING = "xxxNONE12345"
 
   val questionAnswerDelay = 15 seconds
 
   def loadQuestions() = {
-    val bufferedSource: BufferedSource = scala.io.Source.fromFile("src/main/resources/preguntas.csv")
-      bufferedSource.getLines().flatMap{
+    val bufferedSource: BufferedSource = scala.io.Source.fromFile("src/main/resources/preguntas2.csv")
+      val questions = bufferedSource.getLines().flatMap{
       l =>
         //mylog.info(l)
         val spli: Array[String] = l.split('|').map(_.trim)
@@ -47,6 +48,7 @@ object BotData {
             val solution = spli(6)
             val photo = if(spli.length > 7) Some(spli(7)) else None
             //mylog.info("Returning question")
+            mylog.info(s"Question $l is ok")
             Some(Question(question,points,respA,respB,respC,respD,solution,photo))
           }.getOrElse(None)
         }else{
@@ -54,7 +56,9 @@ object BotData {
           None
         }
     }
-
+    val questionsAll = questions.toSeq
+    mylog.info(s"Number of loaded questions: ${questionsAll.length}")
+    questionsAll
   }
 
   def loadUsers(dev: Boolean = false): Seq[Q60User] = {
@@ -65,9 +69,9 @@ object BotData {
         l => {
           val spli: Array[String] = l.split('|').map(_.trim)
           if(spli.length >= 4 ) {
-            val first = if (spli(1) != "") Some(spli(1)) else None
-            val last = if (spli(2) != "") Some(spli(2)) else None
-            val username = if (spli(3) != "") Some(spli(3)) else None
+            val first = if (spli(1) != "" && spli(1) != NONESTRING) Some(spli(1)) else None
+            val last = if (spli(2) != "" && spli(2) != NONESTRING) Some(spli(2)) else None
+            val username = if (spli(3) != "" && spli(3) != NONESTRING) Some(spli(3)) else None
             val user = Q60User(spli(0).toLong, first, last, username)
             mylog.info(s"Loading: $user")
             Some(user)
@@ -98,7 +102,7 @@ object BotData {
     import java.io._
     val fil = new PrintWriter(new File(getFileName(dev)))
     users.foreach(u => {
-      val s = u.chatId.toString+"|"+u.firstName.getOrElse("")+"|"+u.lastName.getOrElse("")+"|"+u.username.getOrElse("")
+      val s = u.chatId.toString+"|"+u.firstName.getOrElse(NONESTRING)+"|"+u.lastName.getOrElse(NONESTRING)+"|"+u.username.getOrElse(NONESTRING)
       mylog.info(s"Saving: $s")
       fil.println(s)
     })
@@ -106,7 +110,7 @@ object BotData {
     fil.close()
   }
 
-  lazy val allQuestions: Seq[Question] = loadQuestions().toSeq
+  val allQuestions: Seq[Question] = loadQuestions().toSeq
 
 
   def getPhotoPath():String = {
@@ -115,4 +119,14 @@ object BotData {
     val ind = Random.nextInt(l.length)
     l(ind).getAbsolutePath
   }
+
+//  val imagen = (1 to 10).map(n => (n,n,n,n,n,n))
+//
+//  val cond1 = (altura:Int) => altura > 7
+//  val cond2 = (ancho: Int) => ancho < 10
+//  val condglobal = {
+//    case(_,_,altura,ancho) => cond1(altura) & cond2(ancho)
+//  }
+//  val b = imagen.filter(condglobal)
+//  val a = imagen.filter{case(_,_,_,altura,_,_) => altura > 7}
 }

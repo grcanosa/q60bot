@@ -14,6 +14,8 @@ import scala.concurrent.duration._
 object PlayerActor {
   case object QuestionTimeIsOver
   case object ChangeName
+  case object SendStartText
+  case object SendHelpText
   val STARTING = 1
   val QUESTION = 2
   val NO_QUESTION = 3
@@ -49,10 +51,13 @@ class PlayerActor(iniUser: Q60User, val botActor: ActorRef) extends Actor{
   var currQuestionAnswered = false
   var currQuestionOK = false
 
+  implicit var userName = user.displayName
 
   def changeState(new_state:Int) = {
-    prev_state = state
-    state = new_state
+    if(state != new_state) {
+      prev_state = state
+      state = new_state
+    }
   }
 
   def goToLastState() = {
@@ -102,6 +107,7 @@ class PlayerActor(iniUser: Q60User, val botActor: ActorRef) extends Actor{
 
   def changeName(name:String) = {
     user = user.copy(firstName=Some(name),lastName = None, username = None)
+    userName = user.displayName
   }
 
 
@@ -147,21 +153,23 @@ class PlayerActor(iniUser: Q60User, val botActor: ActorRef) extends Actor{
 
   def questionTimeIsOver() = {
     changeState(NO_QUESTION)
+    var success = false
     if(! currQuestionAnswered){
       botActor ! SendMessage(user.chatId,BotTexts.questionNotAnswered,replyMarkup = Some(BotTexts.removeKeyboard))
     }else{
       if(currQuestionOK){
         botActor ! SendMessage(user.chatId,BotTexts.questionAnsweredOK,replyMarkup = Some(BotTexts.removeKeyboard))
+        success = true
       }else{
         botActor ! SendMessage(user.chatId,BotTexts.questionAnsweredKO,replyMarkup = Some(BotTexts.removeKeyboard))
       }
     }
-    quizzActor.foreach(_ ! UserResult(user,points))
+    quizzActor.foreach(_ ! UserResult(user,points,success))
   }
 
   override def receive()={
     case m:Message => {
-      mylog.info(s"${user.chatId}- Message ${m.text.get}, state: ${state}")
+      mylog.info(s"${user.chatId}- Message ${m.text.getOrElse("NO TEXT")}, state: ${state}")
       if(state == STARTING){
         handleStartingMessage(m)
       }
@@ -177,7 +185,7 @@ class PlayerActor(iniUser: Q60User, val botActor: ActorRef) extends Actor{
     }
 
     case ChangeName => {
-      if(state == STARTING || state == NO_QUESTION){
+      if(state == STARTING || state == NO_QUESTION || state == CHANGE_NAME){
         changeState(CHANGE_NAME)
         botActor ! SendMessage(user.chatId,BotTexts.requestNewName)
       }else{
@@ -197,6 +205,10 @@ class PlayerActor(iniUser: Q60User, val botActor: ActorRef) extends Actor{
     }
 
     case QuizzActorRef(actorRef) => quizzActor = Some(actorRef)
+
+    case SendStartText => botActor ! SendMessage(user.chatId,BotTexts.startText())
+    case SendHelpText => botActor ! SendMessage(user.chatId,BotTexts.helpText())
+
   }
 
 }

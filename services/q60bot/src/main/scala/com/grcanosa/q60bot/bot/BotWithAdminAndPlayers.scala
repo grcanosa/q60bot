@@ -19,7 +19,9 @@ import scala.util.{Failure, Success}
 
 object BotWithAdminAndPlayers{
   case class SendToAllUsers(sm: Option[SendMessage]= None, sp: Option[SendPhoto] = None)
+  case class SendToAllUsersExcept(chatId: Long, sm: Option[SendMessage]= None, sp: Option[SendPhoto] = None)
   case class SendToAllHandlers(msg: Any)
+  case class SendToAdmin(msg:String)
   case class ChatHandler(actorRef: ActorRef, user: Q60User)
 
   case class SendMsgAndRet(sm:SendMessage)
@@ -93,15 +95,20 @@ with Messages{
   }
 
   def getActorRef(m: Message): ActorRef = atomic {
+    getChatHandler(m).actorRef
+  }
+
+  def getChatHandler(m: Message) = atomic {
     chatHandlers.getOrElseUpdate(m.chat.id, {
       system.scheduler.scheduleOnce(1 second){
         botActor ! SaveBotUsers
       }
+      botActor ! SendToAdmin(s"New USER: ${m.chat.firstName.getOrElse("")}, ${m.chat.lastName.getOrElse("")},${m.chat.username.getOrElse("")}")
       val user = Q60User(m.chat.id, m.chat.firstName, m.chat.lastName,m.chat.username)
       val actorRef =system.actorOf(Props(classOf[PlayerActor],
         user,botActor), name = s"player${m.chat.id}")
       ChatHandler(actorRef,user)
-    }).actorRef
+    })
   }
 
   def saveBotUsers() = {
@@ -119,10 +126,18 @@ with Messages{
       case sp: SendPhoto => request(sp)
       case em: EditMessageReplyMarkup => request(em)
       case dm: DeleteMessage => request(dm)
+      case SendToAdmin(msgstr) => self ! SendMessage(rootId,msgstr)
       case SendToAllUsers(sm,sp) => chatHandlers.foreach{
         case (chatId,_) =>
           sm.foreach(self ! _.copy(chatId=chatId))
           sp.foreach(self ! _.copy(chatId=chatId))
+      }
+      case SendToAllUsersExcept(cid,sm,sp) => chatHandlers.foreach{
+        case (chatId,_) if chatId != cid => {
+          sm.foreach(self ! _.copy(chatId = chatId))
+          sp.foreach(self ! _.copy(chatId = chatId))
+        }
+        case _ => println("no resending")
       }
       case SendToAllHandlers(m) => chatHandlers.foreach{
         case (_,chatH) => chatH.actorRef ! m
@@ -143,6 +158,7 @@ with Messages{
         chatHandlers.get(user.chatId).foreach(ch =>
           chatHandlers.update(user.chatId,ch.copy(user = user))
         )
+        self ! SaveBotUsers
       }
 
     }

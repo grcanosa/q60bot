@@ -6,8 +6,8 @@ import com.bot4s.telegram.methods._
 import com.bot4s.telegram.models._
 
 import scala.util.{Failure, Success}
-import com.grcanosa.q60bot.bot.PlayerActor.{ChangeName, QuizzActorRef}
-import com.grcanosa.q60bot.bot.QuizzActor.{GetResults, NewQuestion}
+import com.grcanosa.q60bot.bot.PlayerActor.{ChangeName, QuizzActorRef, SendHelpText, SendStartText}
+import com.grcanosa.q60bot.bot.QuizzActor.{GetResults, NewQuestion, TestQuestion}
 
 
 
@@ -27,10 +27,15 @@ class Q60Bot(token: String, rootId: Long, dev: Boolean)
 
   botActor ! LoadBotUsers
 
+  onCommand("/help"){ implicit msg =>
+    addedToUsers { handler =>
+      handler ! SendHelpText
+    }
+  }
 
   onCommand("/start") { implicit msg =>
-    addedToUsers { _ =>
-      reply(BotTexts.startText(),replyMarkup = Some(BotTexts.removeKeyboard))
+    addedToUsers { handler =>
+      handler ! SendStartText
     }
   }
 
@@ -75,6 +80,15 @@ class Q60Bot(token: String, rootId: Long, dev: Boolean)
     }
   }
 
+  onCommand("/tq") { implicit msg =>
+    addedToUsers { _ =>
+      isAdmin { _ =>
+        botActor ! SendToAllHandlers(QuizzActorRef(quizzActor))
+        quizzActor ! TestQuestion
+      }
+    }
+  }
+
   onCommand("/r") { implicit msg =>
     addedToUsers{ _ =>
       isAdmin { _ =>
@@ -111,13 +125,16 @@ class Q60Bot(token: String, rootId: Long, dev: Boolean)
 
   def handlePhotoMessage(msg:Message) = {
     mylog.info("photo is defined")
-    request(GetFile(msg.photo.get.reverse.head.fileId)).onComplete{
+    val photoId = msg.photo.get.reverse.head.fileId
+    request(GetFile(photoId)).onComplete{
       case Success(file) =>
         file.filePath match {
           case Some(filePath) =>
             // See https://core.telegram.org/bots/api#getfile
             val url = s"https://api.telegram.org/file/bot$token/$filePath"
             BotData.downloadFile(url,filePath)
+            val txt = "Enviado por: "+getChatHandler(msg).user.displayName
+            botActor ! SendToAllUsersExcept(msg.chat.id,None,Some(SendPhoto(0.toLong,photo=InputFile(photoId),caption=Some(txt))))
           case _ =>
         }
       case Failure(e) =>
